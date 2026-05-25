@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.136.3",
+    "fugashi>=1.5.2",
     "lrclibapi>=0.3.1",
+    "unidic-lite>=1.0.8",
     "youtube-transcript-api>=1.2.4",
+    "yt-dlp>=2026.6.9",
 ]
