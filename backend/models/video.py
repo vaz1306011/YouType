@@ -1,7 +1,7 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,74 @@ class Video:
     is_generated: Optional[bool] = None
 
     @classmethod
-    def from_youtube(cls, video_id: str, title: Optional[str] = None) -> "Video":
+    def from_id(
+        cls,
+        video_id: str,
+        track_name: Optional[str] = None,
+        artist_name: Optional[str] = None,
+    ) -> "Video":
+        try:
+            return cls._from_lrclib(video_id=video_id)
+        except Exception:
+            logger.info(
+                "[%s] LRCLIB にヒットせず YouTube 字幕にフォールバック", video_id
+            )
+            return cls._from_youtube(video_id=video_id, title=track_name)
+
+    @classmethod
+    def _from_lrclib(
+        cls,
+        video_id: str,
+    ) -> "Video":
+        try:
+            track_name, artist_name = _fetch_youtube_music_info(video_id)
+        except Exception as e:
+            logger.warning(
+                "[%s] YouTube Music API からの情報の取得に失敗しました: %s",
+                video_id,
+                e,
+            )
+
+        api = LrcLibAPI(user_agent="my-app/0.1.0")
+
+        results = api.search_lyrics(
+            track_name=track_name,
+            artist_name=artist_name,
+        )
+        if not results:
+            logger.warning(
+                "[%s] LRCLIB での検索結果が空でした。track_name=%r, artist_name=%r",
+                video_id,
+                track_name,
+                artist_name,
+            )
+            raise ValueError(
+                f"LRCLIB で {artist_name} - {track_name} が見つかりませんでした"
+            )
+
+        # 先頭の結果が最も一致しやすいため、synced_lyrics がある曲を優先する
+        match = next(
+            (r for r in results if r.synced_lyrics),
+            None,
+        )
+        if match is None:
+            raise ValueError(f"LRCLIB に {track_name} の同期歌詞がありません")
+
+        assert match.synced_lyrics is not None
+        snippets = [
+            s
+            for s in _parse_lrc(match.synced_lyrics, song_length=match.duration)
+            if _JAPANESE.search(s["text"])
+        ]
+        return cls(
+            video_id=video_id,
+            title=track_name,
+            snippets=snippets,
+            language="ja",
+        )
+
+    @classmethod
+    def _from_youtube(cls, video_id: str, title: Optional[str] = None) -> "Video":
         ytt_api = YouTubeTranscriptApi()
         try:
             transcript_list = ytt_api.list(video_id)
@@ -58,49 +125,22 @@ class Video:
             )
             return cls(video_id=video_id, title=title)
 
-    @classmethod
-    def from_lrclib(
-        cls,
-        track_name: str,
-        artist_name: Optional[str] = None,
-        video_id: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> "Video":
-        api = LrcLibAPI(user_agent="my-app/0.1.0")
-
-        results = api.search_lyrics(
-            track_name=track_name,
-            artist_name=artist_name,
-        )
-        if not results:
-            raise ValueError(
-                f"LRCLIB で {artist_name} - {track_name} が見つかりませんでした"
-            )
-
-        # 先頭の結果が最も一致しやすいため、synced_lyrics がある曲を優先する
-        match = next(
-            (r for r in results if r.synced_lyrics),
-            None,
-        )
-        if match is None:
-            raise ValueError(f"LRCLIB に {track_name} の同期歌詞がありません")
-
-        assert match.synced_lyrics is not None
-        snippets = [
-            s
-            for s in _parse_lrc(match.synced_lyrics, song_length=match.duration)
-            if _JAPANESE.search(s["text"])
-        ]
-        return cls(
-            video_id=video_id,
-            title=title or track_name,
-            snippets=snippets,
-            language="ja",
-        )
-
 
 _LRC_TIME = re.compile(r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]")
 _JAPANESE = re.compile(r"[ぁ-ゟ゠-ヿ一-鿿㐀-䶿]")
+
+
+def _fetch_youtube_music_info(video_id: str) -> tuple[str, Optional[str]]:
+    import yt_dlp
+
+    opts: Any = {"quiet": True, "no_warnings": True}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(
+            f"https://www.youtube.com/watch?v={video_id}", download=False
+        )
+    track: str = info.get("track") or info.get("title") or ""
+    artist: Optional[str] = info.get("artist") or info.get("uploader")
+    return track, artist
 
 
 def _parse_lrc(synced: str, song_length: Optional[float] = None) -> list[dict]:
