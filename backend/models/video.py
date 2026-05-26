@@ -21,6 +21,7 @@ class Video:
 
     video_id: Optional[str]
     title: Optional[str] = None
+    artist: Optional[str] = None
     snippets: list[dict] = field(default_factory=list)
     language: Optional[str] = None
     is_generated: Optional[bool] = None
@@ -29,42 +30,37 @@ class Video:
     def from_id(
         cls,
         video_id: str,
-        track_name: Optional[str] = None,
-        artist_name: Optional[str] = None,
-    ) -> "Video":
-        try:
-            return cls._from_lrclib(video_id=video_id)
-        except Exception:
-            logger.info(
-                f"[{video_id}] LRCLIB にヒットせず YouTube 字幕にフォールバック"
-            )
-            return cls._from_youtube(video_id=video_id, title=track_name)
-
-    @classmethod
-    def _from_lrclib(
-        cls,
-        video_id: str,
     ) -> "Video":
         try:
             track_name, artist_name = _fetch_youtube_music_info(video_id)
         except Exception as e:
             logger.warning(f"[{video_id}] yt_dlpからの情報の取得に失敗しました: {e}")
 
+        try:
+            return cls._from_lrclib(video_id, track_name, artist_name)
+        except Exception:
+            return cls._from_youtube(video_id, track_name, artist_name)
+
+    @classmethod
+    def _from_lrclib(
+        cls, video_id: str, track_name: str, artist: Optional[str]
+    ) -> "Video":
+
         logger.debug(
-            f"[{video_id}] LRCLIB で歌詞を検索はじめます。\n    track_name ={track_name!r}\n    artist_name={artist_name!r}"
+            f"[{video_id}] LRCLIB で歌詞を検索はじめます。\n    track_name ={track_name!r}\n    artist_name={artist!r}"
         )
         api = LrcLibAPI(user_agent="youtype/0.1.0")
         results = api.search_lyrics(
             track_name=track_name,
-            artist_name=artist_name,
+            artist_name=artist,
         )
         logger.debug(f"[{video_id}] LRCLIB の検索結果: {len(results)} 件")
         if not results:
             logger.warning(
-                f"[{video_id}] LRCLIB での検索結果が空でした。\n    track_name ={track_name!r}\n    artist_name={artist_name=!r}"
+                f"[{video_id}] LRCLIB での検索結果が空でした。\n    track_name ={track_name!r}\n    artist_name={artist!r}"
             )
             raise ValueError(
-                f"LRCLIB で {artist_name} - {track_name} が見つかりませんでした"
+                f"LRCLIB で {artist} - {track_name} が見つかりませんでした"
             )
 
         # 先頭の結果が最も一致しやすいため、synced_lyrics がある曲を優先する
@@ -84,12 +80,16 @@ class Video:
         return cls(
             video_id=video_id,
             title=track_name,
+            artist=artist,
             snippets=snippets,
             language="ja",
         )
 
     @classmethod
-    def _from_youtube(cls, video_id: str, title: Optional[str] = None) -> "Video":
+    def _from_youtube(
+        cls, video_id: str, track_name: str, artist: Optional[str]
+    ) -> "Video":
+        logger.debug(f"[{video_id}] YouTube Transcript API で字幕を検索します")
         ytt_api = YouTubeTranscriptApi()
         try:
             transcript_list = ytt_api.list(video_id)
@@ -106,7 +106,8 @@ class Video:
             fetched = transcript.fetch()
             return cls(
                 video_id=video_id,
-                title=title,
+                title=track_name,
+                artist=artist,
                 snippets=fetched.to_raw_data(),
                 language=fetched.language,
                 is_generated=fetched.is_generated,
@@ -114,12 +115,12 @@ class Video:
 
         except TranscriptsDisabled:
             logger.warning(f"[{video_id}] この動画は字幕が無効です。")
-            return cls(video_id=video_id, title=title)
+            return cls(video_id=video_id, title=track_name, artist=artist)
         except NoTranscriptFound:
             logger.warning(
                 f"[{video_id}] 使用可能な字幕が見つかりませんでした（ja/en 手動・ja 自動生成）。"
             )
-            return cls(video_id=video_id, title=title)
+            return cls(video_id=video_id, title=track_name, artist=artist)
 
 
 _LRC_TIME = re.compile(r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]")
