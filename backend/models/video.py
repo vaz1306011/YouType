@@ -3,14 +3,15 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Optional
 
-logger = logging.getLogger(__name__)
-
 from lrclib import LrcLibAPI
 from youtube_transcript_api import (
     NoTranscriptFound,
     TranscriptsDisabled,
     YouTubeTranscriptApi,
 )
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 @dataclass
@@ -35,7 +36,7 @@ class Video:
             return cls._from_lrclib(video_id=video_id)
         except Exception:
             logger.info(
-                "[%s] LRCLIB にヒットせず YouTube 字幕にフォールバック", video_id
+                f"[{video_id}] LRCLIB にヒットせず YouTube 字幕にフォールバック"
             )
             return cls._from_youtube(video_id=video_id, title=track_name)
 
@@ -47,24 +48,20 @@ class Video:
         try:
             track_name, artist_name = _fetch_youtube_music_info(video_id)
         except Exception as e:
-            logger.warning(
-                "[%s] YouTube Music API からの情報の取得に失敗しました: %s",
-                video_id,
-                e,
-            )
+            logger.warning(f"[{video_id}] yt_dlpからの情報の取得に失敗しました: {e}")
 
-        api = LrcLibAPI(user_agent="my-app/0.1.0")
-
+        logger.debug(
+            f"[{video_id}] LRCLIB で歌詞を検索はじめます。\n    track_name ={track_name!r}\n    artist_name={artist_name!r}"
+        )
+        api = LrcLibAPI(user_agent="youtype/0.1.0")
         results = api.search_lyrics(
             track_name=track_name,
             artist_name=artist_name,
         )
+        logger.debug(f"[{video_id}] LRCLIB の検索結果: {len(results)} 件")
         if not results:
             logger.warning(
-                "[%s] LRCLIB での検索結果が空でした。track_name=%r, artist_name=%r",
-                video_id,
-                track_name,
-                artist_name,
+                f"[{video_id}] LRCLIB での検索結果が空でした。\n    track_name ={track_name!r}\n    artist_name={artist_name=!r}"
             )
             raise ValueError(
                 f"LRCLIB で {artist_name} - {track_name} が見つかりませんでした"
@@ -116,12 +113,11 @@ class Video:
             )
 
         except TranscriptsDisabled:
-            logger.warning("[%s] この動画は字幕が無効です。", video_id)
+            logger.warning(f"[{video_id}] この動画は字幕が無効です。")
             return cls(video_id=video_id, title=title)
         except NoTranscriptFound:
             logger.warning(
-                "[%s] 使用可能な字幕が見つかりませんでした（ja/en 手動・ja 自動生成）。",
-                video_id,
+                f"[{video_id}] 使用可能な字幕が見つかりませんでした（ja/en 手動・ja 自動生成）。"
             )
             return cls(video_id=video_id, title=title)
 
@@ -131,6 +127,7 @@ _JAPANESE = re.compile(r"[ぁ-ゟ゠-ヿ一-鿿㐀-䶿]")
 
 
 def _fetch_youtube_music_info(video_id: str) -> tuple[str, Optional[str]]:
+    logger.debug(f"[{video_id}] yt_dlpで曲名とアーティスト名を取得します")
     import yt_dlp
 
     opts: Any = {"quiet": True, "no_warnings": True}
@@ -140,6 +137,7 @@ def _fetch_youtube_music_info(video_id: str) -> tuple[str, Optional[str]]:
         )
     track: str = info.get("track") or info.get("title") or ""
     artist: Optional[str] = info.get("artist") or info.get("uploader")
+    logger.debug(f"[{video_id}] 取得した曲名: {track!r}\n  アーティスト名: {artist!r}")
     return track, artist
 
 
