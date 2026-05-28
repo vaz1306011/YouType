@@ -48,7 +48,14 @@ export default function WatchPage() {
   }, [videoId])
 
   if (state.status === 'idle' || state.status === 'loading') {
-    return <div className="status">読み込み中...</div>
+    return (
+      <div className="loading">
+        <div className="loading-dots">
+          <span /><span /><span />
+        </div>
+        <p>歌詞を取得中...</p>
+      </div>
+    )
   }
 
   if (state.status === 'error') {
