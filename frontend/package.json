@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "concurrently": "^10.0.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0"
