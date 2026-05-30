@@ -169,6 +169,31 @@ code {
   font-weight: 600;
 }
 
+/* Practice mode toggle */
+.practice-toggle {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toggle-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.toggle-btn.on {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
 /* Loading */
 .loading {
   display: flex;

@@ -40,10 +40,12 @@ export default function WatchPage() {
   const [state, setState] = useState<State>({ status: 'idle' })
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [matcher, setMatcher] = useState<MatchState | null>(null)
+  const [practiceMode, setPracticeMode] = useState(true)
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
   const lyricsRef = useRef<HTMLDivElement>(null)
   const currentIndexRef = useRef(-1)
+  const practiceModeRef = useRef(true)
 
   // Fetch transcript
   useEffect(() => {
@@ -85,7 +87,10 @@ export default function WatchPage() {
               if (idx !== currentIndexRef.current) {
                 currentIndexRef.current = idx
                 setCurrentIndex(idx)
-                if (idx >= 0) setMatcher(createMatcher(snippets[idx].furigana))
+                if (idx >= 0) {
+                  setMatcher(createMatcher(snippets[idx].furigana))
+                  if (practiceModeRef.current) player.pauseVideo()
+                }
               }
             }, 200)
           },
@@ -103,12 +108,18 @@ export default function WatchPage() {
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [currentIndex])
 
+  // Keep ref in sync so the interval closure sees latest value
+  useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
+
   // Keyboard input
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return
     setMatcher((prev) => {
       if (!prev) return prev
-      const [next] = advance(prev, e.key)
+      const [next, result] = advance(prev, e.key)
+      if (result === 'complete' && practiceModeRef.current) {
+        playerRef.current?.playVideo()
+      }
       return next
     })
   }, [])
@@ -141,6 +152,15 @@ export default function WatchPage() {
         <h1>{data.title ?? videoId}</h1>
         {data.artist && <p className="artist">{data.artist}</p>}
       </header>
+
+      <div className="practice-toggle">
+        <button
+          className={`toggle-btn${practiceMode ? ' on' : ''}`}
+          onClick={() => setPracticeMode((v) => !v)}
+        >
+          練習モード {practiceMode ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       <div className="player-wrapper">
         <div ref={playerDivRef} />
