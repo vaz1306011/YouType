@@ -1,14 +1,32 @@
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Optional
 
+import fugashi
 from lrclib import LrcLibAPI
 from youtube_transcript_api import (
     NoTranscriptFound,
     TranscriptsDisabled,
     YouTubeTranscriptApi,
 )
+
+_tagger = fugashi.Tagger()
+
+
+def _to_hiragana(text: str) -> str:
+    return "".join(
+        chr(ord(c) - 0x60) if "ァ" <= c <= "ン" else c
+        for c in text
+    )
+
+
+def _furigana(text: str) -> str:
+    return _to_hiragana("".join(
+        w.feature.kana or w.surface
+        for w in _tagger(text)
+    ))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -73,7 +91,7 @@ class Video:
 
         assert match.synced_lyrics is not None
         snippets = [
-            s
+            {**s, "furigana": _furigana(s["text"])}
             for s in _parse_lrc(match.synced_lyrics, song_length=match.duration)
             if _JAPANESE.search(s["text"])
         ]
@@ -104,11 +122,15 @@ class Video:
                 )
 
             fetched = transcript.fetch()
+            raw = fetched.to_raw_data()
+            snippets = [
+                {**s, "furigana": _furigana(s["text"])} for s in raw
+            ]
             return cls(
                 video_id=video_id,
                 title=track_name,
                 artist=artist,
-                snippets=fetched.to_raw_data(),
+                snippets=snippets,
                 language=fetched.language,
                 is_generated=fetched.is_generated,
             )
