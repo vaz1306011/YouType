@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { advance, createMatcher, doneHiraganaLength, type MatchState } from '../lib/romaji'
 
 interface Snippet {
   text: string
@@ -38,9 +39,11 @@ export default function WatchPage() {
   const videoId = searchParams.get('v')
   const [state, setState] = useState<State>({ status: 'idle' })
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const [matcher, setMatcher] = useState<MatchState | null>(null)
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
   const lyricsRef = useRef<HTMLDivElement>(null)
+  const currentIndexRef = useRef(-1)
 
   // Fetch transcript
   useEffect(() => {
@@ -61,12 +64,11 @@ export default function WatchPage() {
       .catch((err: Error) => setState({ status: 'error', message: err.message }))
   }, [videoId])
 
-  // Initialize YouTube Player after data loads
+  // Initialize YouTube Player
   useEffect(() => {
     if (state.status !== 'success' || !videoId || !playerDivRef.current) return
-
-    let timer: ReturnType<typeof setInterval>
     const snippets = state.data.snippets
+    let timer: ReturnType<typeof setInterval>
 
     loadYouTubeApi().then(() => {
       playerRef.current = new window.YT.Player(playerDivRef.current!, {
@@ -80,7 +82,11 @@ export default function WatchPage() {
               if (player.getPlayerState() !== window.YT.PlayerState.PLAYING) return
               const t = player.getCurrentTime()
               const idx = snippets.findLastIndex((s) => s.start <= t)
-              setCurrentIndex(idx)
+              if (idx !== currentIndexRef.current) {
+                currentIndexRef.current = idx
+                setCurrentIndex(idx)
+                if (idx >= 0) setMatcher(createMatcher(snippets[idx].furigana))
+              }
             }, 200)
           },
         },
@@ -90,12 +96,27 @@ export default function WatchPage() {
     return () => clearInterval(timer)
   }, [state.status, videoId])
 
-  // Auto-scroll active lyric line into view
+  // Auto-scroll active lyric into view
   useEffect(() => {
     if (currentIndex < 0 || !lyricsRef.current) return
     const el = lyricsRef.current.children[currentIndex] as HTMLElement | undefined
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [currentIndex])
+
+  // Keyboard input
+  const handleKey = useCallback((e: KeyboardEvent) => {
+    if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return
+    setMatcher((prev) => {
+      if (!prev) return prev
+      const [next] = advance(prev, e.key)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [handleKey])
 
   if (state.status === 'idle' || state.status === 'loading') {
     return (
@@ -129,11 +150,24 @@ export default function WatchPage() {
         {data.snippets.length === 0 ? (
           <p className="no-lyrics">歌詞が見つかりませんでした</p>
         ) : (
-          data.snippets.map((s, i) => (
-            <p key={i} className={`lyric-line${i === currentIndex ? ' active' : ''}`}>
-              {s.text}
-            </p>
-          ))
+          data.snippets.map((s, i) => {
+            const isActive = i === currentIndex
+            const doneLen = isActive && matcher ? doneHiraganaLength(matcher) : 0
+            const done = s.furigana.slice(0, doneLen)
+            const remaining = s.furigana.slice(doneLen)
+            return (
+              <p key={i} className={`lyric-line${isActive ? ' active' : ''}`}>
+                {isActive ? (
+                  <>
+                    <span className="typed">{done}</span>
+                    <span>{remaining}</span>
+                  </>
+                ) : (
+                  s.text
+                )}
+              </p>
+            )
+          })
         )}
       </section>
     </main>

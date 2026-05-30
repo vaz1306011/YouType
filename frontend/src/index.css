@@ -164,6 +164,11 @@ code {
   padding-left: 9px;
 }
 
+.typed {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* Loading */
 .loading {
   display: flex;
