@@ -43,7 +43,6 @@ export default function WatchPage() {
   const [practiceMode, setPracticeMode] = useState(true)
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
-  const lyricsRef = useRef<HTMLDivElement>(null)
   const currentIndexRef = useRef(-1)
   const practiceModeRef = useRef(true)
 
@@ -101,13 +100,6 @@ export default function WatchPage() {
     return () => clearInterval(timer)
   }, [state.status, videoId])
 
-  // Auto-scroll active lyric into view
-  useEffect(() => {
-    if (currentIndex < 0 || !lyricsRef.current) return
-    const el = lyricsRef.current.children[currentIndex] as HTMLElement | undefined
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [currentIndex])
-
   // Keep ref in sync so the interval closure sees latest value
   useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
 
@@ -145,6 +137,8 @@ export default function WatchPage() {
   }
 
   const { data } = state
+  const current = currentIndex >= 0 ? data.snippets[currentIndex] : null
+  const doneLen = current && matcher ? doneHiraganaLength(matcher) : 0
 
   return (
     <main className="watch">
@@ -166,30 +160,19 @@ export default function WatchPage() {
         <div ref={playerDivRef} />
       </div>
 
-      <section className="lyrics" ref={lyricsRef}>
-        {data.snippets.length === 0 ? (
-          <p className="no-lyrics">歌詞が見つかりませんでした</p>
+      <div className="current-lyric">
+        {current ? (
+          <>
+            <p className="furigana">
+              <span className="typed">{current.furigana.slice(0, doneLen)}</span>
+              <span>{current.furigana.slice(doneLen)}</span>
+            </p>
+            <p className="lyric-text">{current.text}</p>
+          </>
         ) : (
-          data.snippets.map((s, i) => {
-            const isActive = i === currentIndex
-            const doneLen = isActive && matcher ? doneHiraganaLength(matcher) : 0
-            const done = s.furigana.slice(0, doneLen)
-            const remaining = s.furigana.slice(doneLen)
-            return (
-              <p key={i} className={`lyric-line${isActive ? ' active' : ''}`}>
-                {isActive ? (
-                  <>
-                    <span className="typed">{done}</span>
-                    <span>{remaining}</span>
-                  </>
-                ) : (
-                  s.text
-                )}
-              </p>
-            )
-          })
+          <p className="lyric-placeholder">♪</p>
         )}
-      </section>
+      </div>
     </main>
   )
 }

@@ -141,27 +141,38 @@ code {
   height: 100%;
 }
 
-.lyrics {
+.current-lyric {
   width: 100%;
   max-width: 720px;
+  min-height: 96px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.lyric-line {
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 20px;
-  transition: background 0.15s, color 0.15s;
-  cursor: default;
-}
-
-.lyric-line.active {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 16px;
+  border-radius: 12px;
   background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+
+.furigana {
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+
+.lyric-text {
+  font-size: 28px;
   color: var(--text-h);
-  border-left: 3px solid var(--accent);
-  padding-left: 9px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.lyric-placeholder {
+  font-size: 28px;
+  color: var(--text);
+  opacity: 0.3;
 }
 
 .typed {
