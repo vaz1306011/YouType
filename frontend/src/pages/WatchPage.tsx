@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { advance, createMatcher, doneHiraganaLength, type MatchState } from '../lib/romaji'
+import { advance, createMatcher, doneHiraganaLength, doneSurfaceLength, type MatchState } from '../lib/romaji'
+
+interface Token {
+  surface: string
+  reading: string
+}
 
 interface Snippet {
   text: string
   furigana: string
+  tokens: Token[]
   start: number
   duration: number
 }
@@ -45,6 +51,7 @@ export default function WatchPage() {
   const playerDivRef = useRef<HTMLDivElement>(null)
   const currentIndexRef = useRef(-1)
   const practiceModeRef = useRef(true)
+  const matcherRef = useRef<MatchState | null>(null)
 
   // Fetch transcript
   useEffect(() => {
@@ -84,11 +91,21 @@ export default function WatchPage() {
               const t = player.getCurrentTime()
               const idx = snippets.findLastIndex((s) => s.start <= t)
               if (idx !== currentIndexRef.current) {
+                // 行が変わった時点で前の行が打ち終わっていなければ停止
+                if (
+                  practiceModeRef.current &&
+                  currentIndexRef.current >= 0 &&
+                  matcherRef.current !== null &&
+                  matcherRef.current.tokenIndex < matcherRef.current.tokens.length
+                ) {
+                  player.pauseVideo()
+                }
                 currentIndexRef.current = idx
                 setCurrentIndex(idx)
                 if (idx >= 0) {
-                  setMatcher(createMatcher(snippets[idx].furigana))
-                  if (practiceModeRef.current) player.pauseVideo()
+                  const newMatcher = createMatcher(snippets[idx].furigana)
+                  matcherRef.current = newMatcher
+                  setMatcher(newMatcher)
                 }
               }
             }, 200)
@@ -100,7 +117,7 @@ export default function WatchPage() {
     return () => clearInterval(timer)
   }, [state.status, videoId])
 
-  // Keep ref in sync so the interval closure sees latest value
+  // Keep refs in sync
   useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
 
   // Keyboard input
@@ -109,6 +126,7 @@ export default function WatchPage() {
     setMatcher((prev) => {
       if (!prev) return prev
       const [next, result] = advance(prev, e.key)
+      matcherRef.current = next
       if (result === 'complete' && practiceModeRef.current) {
         playerRef.current?.playVideo()
       }
@@ -138,7 +156,8 @@ export default function WatchPage() {
 
   const { data } = state
   const current = currentIndex >= 0 ? data.snippets[currentIndex] : null
-  const doneLen = current && matcher ? doneHiraganaLength(matcher) : 0
+  const doneHLen = current && matcher ? doneHiraganaLength(matcher) : 0
+  const doneSLen = current && matcher ? doneSurfaceLength(current.tokens, doneHLen) : 0
 
   return (
     <main className="watch">
@@ -164,10 +183,13 @@ export default function WatchPage() {
         {current ? (
           <>
             <p className="furigana">
-              <span className="typed">{current.furigana.slice(0, doneLen)}</span>
-              <span>{current.furigana.slice(doneLen)}</span>
+              <span className="typed">{current.furigana.slice(0, doneHLen)}</span>
+              <span>{current.furigana.slice(doneHLen)}</span>
             </p>
-            <p className="lyric-text">{current.text}</p>
+            <p className="lyric-text">
+              <span className="typed">{current.text.slice(0, doneSLen)}</span>
+              <span>{current.text.slice(doneSLen)}</span>
+            </p>
           </>
         ) : (
           <p className="lyric-placeholder">♪</p>

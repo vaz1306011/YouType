@@ -152,3 +152,21 @@ function advanceToken(state: MatchState): MatchState {
 export function doneHiraganaLength(state: MatchState): number {
   return state.tokens.slice(0, state.doneChars).join('').length
 }
+
+// ふりがなの打ち済み文字数から元テキストの打ち済み文字数を計算
+export function doneSurfaceLength(
+  tokenMap: { surface: string; reading: string }[],
+  doneHiraganaLen: number,
+): number {
+  let hiraganaCount = 0
+  let surfaceCount = 0
+  for (const t of tokenMap) {
+    if (hiraganaCount + t.reading.length <= doneHiraganaLen) {
+      hiraganaCount += t.reading.length
+      surfaceCount += t.surface.length
+    } else {
+      break
+    }
+  }
+  return surfaceCount
+}

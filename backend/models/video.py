@@ -22,11 +22,16 @@ def _to_hiragana(text: str) -> str:
     )
 
 
-def _furigana(text: str) -> str:
-    return _to_hiragana("".join(
-        w.feature.kana or w.surface
+def _furigana_tokens(text: str) -> list[dict]:
+    """形態素ごとに {surface, reading} のリストを返す"""
+    return [
+        {"surface": w.surface, "reading": _to_hiragana(w.feature.kana or w.surface)}
         for w in _tagger(text)
-    ))
+    ]
+
+
+def _furigana(text: str) -> str:
+    return "".join(t["reading"] for t in _furigana_tokens(text))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -90,11 +95,16 @@ class Video:
             raise ValueError(f"LRCLIB に {track_name} の同期歌詞がありません")
 
         assert match.synced_lyrics is not None
-        snippets = [
-            {**s, "furigana": _furigana(s["text"])}
-            for s in _parse_lrc(match.synced_lyrics, song_length=match.duration)
-            if _JAPANESE.search(s["text"])
-        ]
+        snippets = []
+        for s in _parse_lrc(match.synced_lyrics, song_length=match.duration):
+            if not _JAPANESE.search(s["text"]):
+                continue
+            tokens = _furigana_tokens(s["text"])
+            snippets.append({
+                **s,
+                "furigana": "".join(t["reading"] for t in tokens),
+                "tokens": tokens,
+            })
         return cls(
             video_id=video_id,
             title=track_name,
@@ -123,9 +133,14 @@ class Video:
 
             fetched = transcript.fetch()
             raw = fetched.to_raw_data()
-            snippets = [
-                {**s, "furigana": _furigana(s["text"])} for s in raw
-            ]
+            snippets = []
+            for s in raw:
+                tokens = _furigana_tokens(s["text"])
+                snippets.append({
+                    **s,
+                    "furigana": "".join(t["reading"] for t in tokens),
+                    "tokens": tokens,
+                })
             return cls(
                 video_id=video_id,
                 title=track_name,
