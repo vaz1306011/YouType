@@ -52,6 +52,7 @@ export default function WatchPage() {
   const currentIndexRef = useRef(-1)
   const practiceModeRef = useRef(true)
   const matcherRef = useRef<MatchState | null>(null)
+  const pendingIndexRef = useRef(-1)  // 打ち終わり待ちの次行インデックス
 
   // Fetch transcript
   useEffect(() => {
@@ -91,21 +92,24 @@ export default function WatchPage() {
               const t = player.getCurrentTime()
               const idx = snippets.findLastIndex((s) => s.start <= t)
               if (idx !== currentIndexRef.current) {
-                // 行が変わった時点で前の行が打ち終わっていなければ停止
-                if (
-                  practiceModeRef.current &&
-                  currentIndexRef.current >= 0 &&
+                const notDone =
                   matcherRef.current !== null &&
                   matcherRef.current.tokenIndex < matcherRef.current.tokens.length
-                ) {
+
+                if (practiceModeRef.current && currentIndexRef.current >= 0 && notDone) {
+                  // 前の行が未完 → 停止して保留、表示は変えない
                   player.pauseVideo()
-                }
-                currentIndexRef.current = idx
-                setCurrentIndex(idx)
-                if (idx >= 0) {
-                  const newMatcher = createMatcher(snippets[idx].furigana)
-                  matcherRef.current = newMatcher
-                  setMatcher(newMatcher)
+                  pendingIndexRef.current = idx
+                } else {
+                  // 通常遷移
+                  currentIndexRef.current = idx
+                  pendingIndexRef.current = -1
+                  setCurrentIndex(idx)
+                  if (idx >= 0) {
+                    const newMatcher = createMatcher(snippets[idx].furigana)
+                    matcherRef.current = newMatcher
+                    setMatcher(newMatcher)
+                  }
                 }
               }
             }, 200)
@@ -121,17 +125,34 @@ export default function WatchPage() {
   useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
 
   // Keyboard input
+  const snippetsRef = useRef<Snippet[]>([])
+  useEffect(() => {
+    if (state.status === 'success') snippetsRef.current = state.data.snippets
+  }, [state])
+
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return
-    setMatcher((prev) => {
-      if (!prev) return prev
-      const [next, result] = advance(prev, e.key)
-      matcherRef.current = next
-      if (result === 'complete' && practiceModeRef.current) {
+    const prev = matcherRef.current
+    if (!prev) return
+    const [next, result] = advance(prev, e.key)
+    matcherRef.current = next
+    setMatcher(next)
+
+    if (result === 'complete') {
+      const pending = pendingIndexRef.current
+      if (pending >= 0) {
+        // 保留していた次の行へ進む
+        const newMatcher = createMatcher(snippetsRef.current[pending].furigana)
+        matcherRef.current = newMatcher
+        currentIndexRef.current = pending
+        pendingIndexRef.current = -1
+        setCurrentIndex(pending)
+        setMatcher(newMatcher)
+        if (practiceModeRef.current) playerRef.current?.playVideo()
+      } else if (practiceModeRef.current) {
         playerRef.current?.playVideo()
       }
-      return next
-    })
+    }
   }, [])
 
   useEffect(() => {
