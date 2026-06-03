@@ -109,9 +109,9 @@ export default function WatchPage() {
               const inGap = idx < 0 || t > snippets[idx].start + snippets[idx].duration
               if (inGap) {
                 const nextIdx = idx + 1
-                if (nextIdx < snippets.length) {
+                if (nextIdx < snippets.length && snippets[nextIdx].start - t > 2) {
                   nextSnippetIndexRef.current = nextIdx
-                  setShowGapHint(snippets[nextIdx].start - t > 3)
+                  setShowGapHint(true)
                 } else {
                   nextSnippetIndexRef.current = -1
                   setShowGapHint(false)
@@ -154,7 +154,8 @@ export default function WatchPage() {
     // スペースでギャップをスキップ
     if (e.key === ' ' && nextSnippetIndexRef.current >= 0) {
       e.preventDefault()
-      playerRef.current?.seekTo(snippetsRef.current[nextSnippetIndexRef.current].start, true)
+      const target = snippetsRef.current[nextSnippetIndexRef.current].start - 2
+      playerRef.current?.seekTo(Math.max(0, target), true)
       return
     }
 
