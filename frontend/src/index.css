@@ -180,12 +180,14 @@ code {
   font-weight: 600;
 }
 
-/* Practice mode toggle */
-.practice-toggle {
+/* Toolbar */
+.toolbar {
   width: 100%;
   max-width: 720px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .toggle-btn {
@@ -203,6 +205,80 @@ code {
   background: var(--accent-bg);
   border-color: var(--accent-border);
   color: var(--accent);
+}
+
+.settings-wrap {
+  position: relative;
+}
+
+.settings-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-btn.on {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.settings-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 220px;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+.settings-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings-panel label span {
+  font-size: 12px;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+
+.settings-panel input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* Gap hint */
+.gap-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.gap-hint {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.6;
 }
 
 /* Loading */

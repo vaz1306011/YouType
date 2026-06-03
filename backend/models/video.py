@@ -14,6 +14,13 @@ from youtube_transcript_api import (
 
 _tagger = fugashi.Tagger()
 
+# ひらがな・カタカナ・漢字・半角カタカナ・英数字以外を除去
+_PUNCT = re.compile(r"[^぀-ゟ゠-ヿ一-鿿ｦ-ﾟa-zA-Z0-9]")
+
+
+def _strip_punct(text: str) -> str:
+    return _PUNCT.sub("", text)
+
 
 def _to_hiragana(text: str) -> str:
     return "".join(
@@ -99,9 +106,11 @@ class Video:
         for s in _parse_lrc(match.synced_lyrics, song_length=match.duration):
             if not _JAPANESE.search(s["text"]):
                 continue
-            tokens = _furigana_tokens(s["text"])
+            clean = _strip_punct(s["text"])
+            tokens = _furigana_tokens(clean)
             snippets.append({
                 **s,
+                "text": clean,
                 "furigana": "".join(t["reading"] for t in tokens),
                 "tokens": tokens,
             })
@@ -135,9 +144,11 @@ class Video:
             raw = fetched.to_raw_data()
             snippets = []
             for s in raw:
-                tokens = _furigana_tokens(s["text"])
+                clean = _strip_punct(s["text"])
+                tokens = _furigana_tokens(clean)
                 snippets.append({
                     **s,
+                    "text": clean,
                     "furigana": "".join(t["reading"] for t in tokens),
                     "tokens": tokens,
                 })

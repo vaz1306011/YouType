@@ -47,12 +47,19 @@ export default function WatchPage() {
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [matcher, setMatcher] = useState<MatchState | null>(null)
   const [practiceMode, setPracticeMode] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
+  const [lyricSize, setLyricSize] = useState(28)
+  const [furiganaSize, setFuriganaSize] = useState(15)
+  const [showGapHint, setShowGapHint] = useState(false)
+
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
   const currentIndexRef = useRef(-1)
   const practiceModeRef = useRef(true)
   const matcherRef = useRef<MatchState | null>(null)
-  const pendingIndexRef = useRef(-1)  // 打ち終わり待ちの次行インデックス
+  const pendingIndexRef = useRef(-1)
+  const nextSnippetIndexRef = useRef(-1)
+  const snippetsRef = useRef<Snippet[]>([])
 
   // Fetch transcript
   useEffect(() => {
@@ -73,6 +80,12 @@ export default function WatchPage() {
       .catch((err: Error) => setState({ status: 'error', message: err.message }))
   }, [videoId])
 
+  // Keep refs in sync
+  useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
+  useEffect(() => {
+    if (state.status === 'success') snippetsRef.current = state.data.snippets
+  }, [state])
+
   // Initialize YouTube Player
   useEffect(() => {
     if (state.status !== 'success' || !videoId || !playerDivRef.current) return
@@ -91,17 +104,32 @@ export default function WatchPage() {
               if (player.getPlayerState() !== window.YT.PlayerState.PLAYING) return
               const t = player.getCurrentTime()
               const idx = snippets.findLastIndex((s) => s.start <= t)
+
+              // ギャップ検出（現在行が終わっているか、まだ始まっていない）
+              const inGap = idx < 0 || t > snippets[idx].start + snippets[idx].duration
+              if (inGap) {
+                const nextIdx = idx + 1
+                if (nextIdx < snippets.length) {
+                  nextSnippetIndexRef.current = nextIdx
+                  setShowGapHint(snippets[nextIdx].start - t > 3)
+                } else {
+                  nextSnippetIndexRef.current = -1
+                  setShowGapHint(false)
+                }
+              } else {
+                nextSnippetIndexRef.current = -1
+                setShowGapHint(false)
+              }
+
               if (idx !== currentIndexRef.current) {
                 const notDone =
                   matcherRef.current !== null &&
                   matcherRef.current.tokenIndex < matcherRef.current.tokens.length
 
                 if (practiceModeRef.current && currentIndexRef.current >= 0 && notDone) {
-                  // 前の行が未完 → 停止して保留、表示は変えない
                   player.pauseVideo()
                   pendingIndexRef.current = idx
                 } else {
-                  // 通常遷移
                   currentIndexRef.current = idx
                   pendingIndexRef.current = -1
                   setCurrentIndex(idx)
@@ -121,16 +149,15 @@ export default function WatchPage() {
     return () => clearInterval(timer)
   }, [state.status, videoId])
 
-  // Keep refs in sync
-  useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
-
   // Keyboard input
-  const snippetsRef = useRef<Snippet[]>([])
-  useEffect(() => {
-    if (state.status === 'success') snippetsRef.current = state.data.snippets
-  }, [state])
-
   const handleKey = useCallback((e: KeyboardEvent) => {
+    // スペースでギャップをスキップ
+    if (e.key === ' ' && nextSnippetIndexRef.current >= 0) {
+      e.preventDefault()
+      playerRef.current?.seekTo(snippetsRef.current[nextSnippetIndexRef.current].start, true)
+      return
+    }
+
     if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return
     const prev = matcherRef.current
     if (!prev) return
@@ -141,7 +168,6 @@ export default function WatchPage() {
     if (result === 'complete') {
       const pending = pendingIndexRef.current
       if (pending >= 0) {
-        // 保留していた次の行へ進む
         const newMatcher = createMatcher(snippetsRef.current[pending].furigana)
         matcherRef.current = newMatcher
         currentIndexRef.current = pending
@@ -187,13 +213,41 @@ export default function WatchPage() {
         {data.artist && <p className="artist">{data.artist}</p>}
       </header>
 
-      <div className="practice-toggle">
+      <div className="toolbar">
         <button
           className={`toggle-btn${practiceMode ? ' on' : ''}`}
           onClick={() => setPracticeMode((v) => !v)}
         >
           練習モード {practiceMode ? 'ON' : 'OFF'}
         </button>
+
+        <div className="settings-wrap">
+          <button
+            className={`settings-btn${showSettings ? ' on' : ''}`}
+            onClick={() => setShowSettings((v) => !v)}
+            aria-label="設定"
+          >
+            ⚙
+          </button>
+          {showSettings && (
+            <div className="settings-panel">
+              <label>
+                歌詞サイズ <span>{lyricSize}px</span>
+                <input
+                  type="range" min={16} max={56} value={lyricSize}
+                  onChange={(e) => setLyricSize(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                ふりがなサイズ <span>{furiganaSize}px</span>
+                <input
+                  type="range" min={10} max={28} value={furiganaSize}
+                  onChange={(e) => setFuriganaSize(Number(e.target.value))}
+                />
+              </label>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="player-wrapper">
@@ -203,17 +257,22 @@ export default function WatchPage() {
       <div className="current-lyric">
         {current ? (
           <>
-            <p className="furigana">
+            <p className="furigana" style={{ fontSize: furiganaSize }}>
               <span className="typed">{current.furigana.slice(0, doneHLen)}</span>
               <span>{current.furigana.slice(doneHLen)}</span>
             </p>
-            <p className="lyric-text">
+            <p className="lyric-text" style={{ fontSize: lyricSize }}>
               <span className="typed">{current.text.slice(0, doneSLen)}</span>
               <span>{current.text.slice(doneSLen)}</span>
             </p>
           </>
         ) : (
-          <p className="lyric-placeholder">♪</p>
+          <div className="gap-area">
+            <p className="lyric-placeholder">♪</p>
+            {showGapHint && (
+              <p className="gap-hint">スペースキーで次の歌詞へスキップ</p>
+            )}
+          </div>
         )}
       </div>
     </main>
