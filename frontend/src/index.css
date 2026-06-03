@@ -190,8 +190,27 @@ code {
   gap: 8px;
 }
 
+/* Volume */
+.volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volume-icon {
+  font-size: 16px;
+  user-select: none;
+}
+
+.volume-slider {
+  width: 100px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Toggle button (used inside settings panel) */
 .toggle-btn {
-  padding: 6px 16px;
+  padding: 4px 14px;
   border-radius: 20px;
   border: 1px solid var(--border);
   background: transparent;
@@ -265,6 +284,19 @@ code {
 .settings-panel input[type='range'] {
   width: 100%;
   accent-color: var(--accent);
+}
+
+.toggle-row {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
 }
 
 /* Gap hint */

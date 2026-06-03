@@ -30,6 +30,8 @@ type State =
   | { status: 'success'; data: VideoData }
   | { status: 'error'; message: string }
 
+const PREVIEW_TEXT = { text: 'サンプル歌詞テキスト', furigana: 'さんぷるかしてきすと' }
+
 function loadYouTubeApi(): Promise<void> {
   if (window.YT?.Player) return Promise.resolve()
   return new Promise((resolve) => {
@@ -50,6 +52,7 @@ export default function WatchPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [lyricSize, setLyricSize] = useState(28)
   const [furiganaSize, setFuriganaSize] = useState(15)
+  const [volume, setVolume] = useState(100)
   const [showGapHint, setShowGapHint] = useState(false)
 
   const playerRef = useRef<YT.Player | null>(null)
@@ -86,6 +89,22 @@ export default function WatchPage() {
     if (state.status === 'success') snippetsRef.current = state.data.snippets
   }, [state])
 
+  // Settings open/close → pause/resume + volume
+  const openSettings = useCallback(() => {
+    playerRef.current?.pauseVideo()
+    setShowSettings(true)
+  }, [])
+
+  const closeSettings = useCallback(() => {
+    setShowSettings(false)
+    playerRef.current?.playVideo()
+  }, [])
+
+  // Volume change
+  useEffect(() => {
+    playerRef.current?.setVolume(volume)
+  }, [volume])
+
   // Initialize YouTube Player
   useEffect(() => {
     if (state.status !== 'success' || !videoId || !playerDivRef.current) return
@@ -97,7 +116,8 @@ export default function WatchPage() {
         videoId,
         playerVars: { rel: 0, modestbranding: 1 },
         events: {
-          onReady() {
+          onReady(e) {
+            e.target.setVolume(volume)
             timer = setInterval(() => {
               const player = playerRef.current
               if (!player || typeof player.getCurrentTime !== 'function') return
@@ -105,7 +125,6 @@ export default function WatchPage() {
               const t = player.getCurrentTime()
               const idx = snippets.findLastIndex((s) => s.start <= t)
 
-              // ギャップ検出（現在行が終わっているか、まだ始まっていない）
               const inGap = idx < 0 || t > snippets[idx].start + snippets[idx].duration
               if (inGap) {
                 const nextIdx = idx + 1
@@ -147,11 +166,11 @@ export default function WatchPage() {
     })
 
     return () => clearInterval(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status, videoId])
 
   // Keyboard input
   const handleKey = useCallback((e: KeyboardEvent) => {
-    // スペースでギャップをスキップ
     if (e.key === ' ' && nextSnippetIndexRef.current >= 0) {
       e.preventDefault()
       const target = snippetsRef.current[nextSnippetIndexRef.current].start - 2
@@ -207,6 +226,11 @@ export default function WatchPage() {
   const doneHLen = current && matcher ? doneHiraganaLength(matcher) : 0
   const doneSLen = current && matcher ? doneSurfaceLength(current.tokens, doneHLen) : 0
 
+  const previewFurigana = PREVIEW_TEXT.furigana
+  const previewText = PREVIEW_TEXT.text
+  const previewHLen = Math.floor(previewFurigana.length / 2)
+  const previewSLen = Math.floor(previewText.length / 2)
+
   return (
     <main className="watch">
       <header className="watch-header">
@@ -215,23 +239,37 @@ export default function WatchPage() {
       </header>
 
       <div className="toolbar">
-        <button
-          className={`toggle-btn${practiceMode ? ' on' : ''}`}
-          onClick={() => setPracticeMode((v) => !v)}
-        >
-          練習モード {practiceMode ? 'ON' : 'OFF'}
-        </button>
+        {/* 左：音量スライダー */}
+        <div className="volume-wrap">
+          <span className="volume-icon">🔊</span>
+          <input
+            type="range" min={0} max={100} value={volume}
+            className="volume-slider"
+            onChange={(e) => setVolume(Number(e.target.value))}
+          />
+        </div>
 
+        {/* 右：設定ギア */}
         <div className="settings-wrap">
           <button
             className={`settings-btn${showSettings ? ' on' : ''}`}
-            onClick={() => setShowSettings((v) => !v)}
+            onClick={() => showSettings ? closeSettings() : openSettings()}
             aria-label="設定"
           >
             ⚙
           </button>
           {showSettings && (
             <div className="settings-panel">
+              <label className="toggle-row">
+                練習モード
+                <button
+                  className={`toggle-btn${practiceMode ? ' on' : ''}`}
+                  onClick={() => setPracticeMode((v) => !v)}
+                >
+                  {practiceMode ? 'ON' : 'OFF'}
+                </button>
+              </label>
+              <hr className="settings-divider" />
               <label>
                 歌詞サイズ <span>{lyricSize}px</span>
                 <input
@@ -256,7 +294,18 @@ export default function WatchPage() {
       </div>
 
       <div className="current-lyric">
-        {current ? (
+        {showSettings ? (
+          <>
+            <p className="furigana" style={{ fontSize: furiganaSize }}>
+              <span className="typed">{previewFurigana.slice(0, previewHLen)}</span>
+              <span>{previewFurigana.slice(previewHLen)}</span>
+            </p>
+            <p className="lyric-text" style={{ fontSize: lyricSize }}>
+              <span className="typed">{previewText.slice(0, previewSLen)}</span>
+              <span>{previewText.slice(previewSLen)}</span>
+            </p>
+          </>
+        ) : current ? (
           <>
             <p className="furigana" style={{ fontSize: furiganaSize }}>
               <span className="typed">{current.furigana.slice(0, doneHLen)}</span>
