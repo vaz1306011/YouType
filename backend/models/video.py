@@ -29,12 +29,27 @@ def _to_hiragana(text: str) -> str:
     )
 
 
+def _split_mixed(surface: str, reading: str) -> list[dict]:
+    """「淡と」→「あわと」のように漢字+ひらがな混在トークンを分割する。
+    surface末尾のひらがな連続がreadingの末尾と一致する場合に分割する。"""
+    for i in range(1, len(surface)):
+        suffix = surface[i:]
+        if all("ぁ" <= c <= "ん" for c in suffix) and reading.endswith(suffix):
+            return [
+                {"surface": surface[:i], "reading": reading[: -len(suffix)]},
+                {"surface": suffix, "reading": suffix},
+            ]
+    return [{"surface": surface, "reading": reading}]
+
+
 def _furigana_tokens(text: str) -> list[dict]:
     """形態素ごとに {surface, reading} のリストを返す"""
-    return [
-        {"surface": w.surface, "reading": _to_hiragana(w.feature.kana or w.surface)}
-        for w in _tagger(text)
-    ]
+    result = []
+    for w in _tagger(text):
+        surface = w.surface
+        reading = _to_hiragana(w.feature.kana or surface)
+        result.extend(_split_mixed(surface, reading))
+    return result
 
 
 def _furigana(text: str) -> str:
