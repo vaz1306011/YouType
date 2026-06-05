@@ -16,6 +16,7 @@ _CACHE_DIR = Path(__file__).parent.parent.parent / "cache"
 _CACHE_DIR.mkdir(exist_ok=True)
 
 _CACHE_TTL = int(os.getenv("CACHE_TTL_DAYS", "30")) * 86400
+_CACHE_VERSION = 2  # 変更したら古いキャッシュを自動破棄
 
 
 def _cache_path(video_id: str) -> Path:
@@ -32,6 +33,11 @@ def _load_cache(video_id: str) -> Video | None:
         return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        if data.get("_v") != _CACHE_VERSION:
+            path.unlink()
+            logger.debug(f"[{video_id}] キャッシュのバージョンが古いため削除しました")
+            return None
+        data.pop("_v")
         return Video(**data)
     except Exception:
         logger.warning(f"[{video_id}] キャッシュの読み込みに失敗しました")
@@ -43,7 +49,8 @@ def _save_cache(video: Video) -> None:
     if not video.video_id:
         return
     path = _cache_path(video.video_id)
-    path.write_text(json.dumps(asdict(video), ensure_ascii=False, indent=2), encoding="utf-8")
+    payload = {"_v": _CACHE_VERSION, **asdict(video)}
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 @router.get("/transcript")
