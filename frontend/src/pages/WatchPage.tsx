@@ -90,6 +90,8 @@ export default function WatchPage() {
   }, [state])
 
   // Settings open/close → pause/resume + volume
+  const settingsWrapRef = useRef<HTMLDivElement>(null)
+
   const openSettings = useCallback(() => {
     playerRef.current?.pauseVideo()
     setShowSettings(true)
@@ -99,6 +101,17 @@ export default function WatchPage() {
     setShowSettings(false)
     playerRef.current?.playVideo()
   }, [])
+
+  useEffect(() => {
+    if (!showSettings) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsWrapRef.current && !settingsWrapRef.current.contains(e.target as Node)) {
+        closeSettings()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSettings, closeSettings])
 
   // Volume change
   useEffect(() => {
@@ -250,7 +263,7 @@ export default function WatchPage() {
         </div>
 
         {/* 右：設定ギア */}
-        <div className="settings-wrap">
+        <div className="settings-wrap" ref={settingsWrapRef}>
           <button
             className={`settings-btn${showSettings ? ' on' : ''}`}
             onClick={() => showSettings ? closeSettings() : openSettings()}
