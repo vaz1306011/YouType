@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { advance, createMatcher, doneHiraganaLength, doneSurfaceLength, type MatchState } from '../lib/romaji'
+import { useLocalStorage } from '../lib/useLocalStorage'
 
 interface Token {
   surface: string
@@ -48,11 +49,11 @@ export default function WatchPage() {
   const [state, setState] = useState<State>({ status: 'idle' })
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [matcher, setMatcher] = useState<MatchState | null>(null)
-  const [practiceMode, setPracticeMode] = useState(true)
+  const [practiceMode, setPracticeMode] = useLocalStorage('practiceMode', true)
   const [showSettings, setShowSettings] = useState(false)
-  const [lyricSize, setLyricSize] = useState(28)
-  const [furiganaSize, setFuriganaSize] = useState(15)
-  const [volume, setVolume] = useState(100)
+  const [lyricSize, setLyricSize] = useLocalStorage('lyricSize', 28)
+  const [furiganaSize, setFuriganaSize] = useLocalStorage('furiganaSize', 15)
+  const [volume, setVolume] = useLocalStorage('volume', 100)
   const [showGapHint, setShowGapHint] = useState(false)
 
   const playerRef = useRef<YT.Player | null>(null)
