@@ -172,6 +172,23 @@ export default function WatchPage() {
                 setShowGapHint(false)
               }
 
+              // 練習モード: 次の行の0.5秒前に未完なら事前停止
+              if (
+                practiceModeRef.current &&
+                idx >= 0 &&
+                idx === currentIndexRef.current &&
+                pendingIndexRef.current < 0
+              ) {
+                const nextIdx = idx + 1
+                const notDone =
+                  matcherRef.current !== null &&
+                  matcherRef.current.tokenIndex < matcherRef.current.tokens.length
+                if (notDone && nextIdx < snippets.length && snippets[nextIdx].start - t <= 0.5) {
+                  player.pauseVideo()
+                  pendingIndexRef.current = nextIdx
+                }
+              }
+
               if (idx !== currentIndexRef.current) {
                 const notDone =
                   matcherRef.current !== null &&
