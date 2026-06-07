@@ -130,12 +130,30 @@ export default function WatchPage() {
         videoId,
         playerVars: { rel: 0, modestbranding: 1 },
         events: {
+          onStateChange(e) {
+            // シーク後にバッファリング状態になった時も即座に歌詞を更新
+            if (e.data === window.YT.PlayerState.BUFFERING) {
+              const t = e.target.getCurrentTime()
+              const idx = snippets.findLastIndex((s: Snippet) => s.start <= t)
+              if (idx !== currentIndexRef.current) {
+                currentIndexRef.current = idx
+                pendingIndexRef.current = -1
+                setCurrentIndex(idx)
+                if (idx >= 0) {
+                  const newMatcher = createMatcher(snippets[idx].furigana)
+                  matcherRef.current = newMatcher
+                  setMatcher(newMatcher)
+                }
+              }
+            }
+          },
           onReady(e) {
             e.target.setVolume(volume)
             timer = setInterval(() => {
               const player = playerRef.current
               if (!player || typeof player.getCurrentTime !== 'function') return
-              if (player.getPlayerState() !== window.YT.PlayerState.PLAYING) return
+              const ps = player.getPlayerState()
+              if (ps === window.YT.PlayerState.UNSTARTED || ps === window.YT.PlayerState.ENDED) return
               const t = player.getCurrentTime()
               const idx = snippets.findLastIndex((s) => s.start <= t)
 
