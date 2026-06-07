@@ -15,7 +15,7 @@ from youtube_transcript_api import (
 _tagger = fugashi.Tagger()
 
 # ひらがな・カタカナ・漢字・半角カタカナ・英数字以外を除去
-_PUNCT = re.compile(r"[^぀-ゟ゠-ヿ一-鿿ｦ-ﾟa-zA-Z0-9]")
+_PUNCT = re.compile(r"[^぀-ゟ゠-ヿ一-鿿々〃ゞゝｦ-ﾟa-zA-Z0-9]")
 
 
 def _strip_punct(text: str) -> str:
