@@ -137,7 +137,7 @@ export default function WatchPage() {
             if (e.data === window.YT.PlayerState.BUFFERING) {
               const t = e.target.getCurrentTime()
               const idx = snippets.findLastIndex((s: Snippet) => s.start <= t)
-              if (idx !== currentIndexRef.current) {
+              if (idx !== currentIndexRef.current && idx > currentIndexRef.current) {
                 currentIndexRef.current = idx
                 pendingIndexRef.current = -1
                 setCurrentIndex(idx)
