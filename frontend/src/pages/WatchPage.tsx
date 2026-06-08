@@ -274,6 +274,13 @@ export default function WatchPage() {
     return () => document.removeEventListener('keydown', handleKey)
   }, [handleKey])
 
+  // iframe がフォーカスを奪ったら即座に取り返す（YouTube ショートカットを無効化）
+  useEffect(() => {
+    const onBlur = () => requestAnimationFrame(() => window.focus())
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  }, [])
+
   if (state.status === 'idle' || state.status === 'loading') {
     return (
       <div className="loading">
