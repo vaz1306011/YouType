@@ -207,7 +207,8 @@ export default function WatchPage() {
                 }
               }
 
-              if (idx !== currentIndexRef.current) {
+              // 後退は無視（打ち終わり直後の動画位置ずれによる誤検知を防ぐ）
+              if (idx !== currentIndexRef.current && idx > currentIndexRef.current) {
                 const notDone =
                   matcherRef.current !== null &&
                   matcherRef.current.tokenIndex < matcherRef.current.tokens.length
