@@ -299,6 +299,35 @@ code {
   margin: 0;
 }
 
+/* Gap progress bar */
+.gap-progress-wrap {
+  width: 100%;
+  max-width: 720px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.gap-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+/* Gap preview (next lyric in gray) */
+.gap-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.preview-text {
+  opacity: 0.35;
+}
+
 /* Gap hint */
 .gap-area {
   display: flex;

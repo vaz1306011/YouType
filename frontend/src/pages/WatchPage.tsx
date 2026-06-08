@@ -55,6 +55,8 @@ export default function WatchPage() {
   const [furiganaSize, setFuriganaSize] = useLocalStorage('furiganaSize', 15)
   const [volume, setVolume] = useLocalStorage('volume', 100)
   const [showGapHint, setShowGapHint] = useState(false)
+  const [nextIndex, setNextIndex] = useState(-1)
+  const [gapProgress, setGapProgress] = useState(0)
 
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
@@ -160,15 +162,31 @@ export default function WatchPage() {
               const inGap = idx < 0 || t > snippets[idx].start + snippets[idx].duration
               if (inGap) {
                 const nextIdx = idx + 1
-                if (nextIdx < snippets.length && snippets[nextIdx].start - t > 2) {
-                  nextSnippetIndexRef.current = nextIdx
-                  setShowGapHint(true)
+                if (nextIdx < snippets.length) {
+                  const nextStart = snippets[nextIdx].start
+                  const gapStart = idx >= 0 ? snippets[idx].start + snippets[idx].duration : 0
+                  const progress = gapStart < nextStart
+                    ? Math.max(0, Math.min(1, (t - gapStart) / (nextStart - gapStart)))
+                    : 1
+                  setNextIndex(nextIdx)
+                  setGapProgress(progress)
+                  if (nextStart - t > 2) {
+                    nextSnippetIndexRef.current = nextIdx
+                    setShowGapHint(true)
+                  } else {
+                    nextSnippetIndexRef.current = -1
+                    setShowGapHint(false)
+                  }
                 } else {
                   nextSnippetIndexRef.current = -1
+                  setNextIndex(-1)
+                  setGapProgress(0)
                   setShowGapHint(false)
                 }
               } else {
                 nextSnippetIndexRef.current = -1
+                setNextIndex(-1)
+                setGapProgress(0)
                 setShowGapHint(false)
               }
 
@@ -342,6 +360,12 @@ export default function WatchPage() {
         <div ref={playerDivRef} />
       </div>
 
+      {nextIndex >= 0 && !current && !showSettings && (
+        <div className="gap-progress-wrap">
+          <div className="gap-progress-bar" style={{ width: `${gapProgress * 100}%` }} />
+        </div>
+      )}
+
       <div className="current-lyric">
         {showSettings ? (
           <>
@@ -365,6 +389,19 @@ export default function WatchPage() {
               <span>{current.text.slice(doneSLen)}</span>
             </p>
           </>
+        ) : nextIndex >= 0 ? (
+          // ギャップ中：次の歌詞をグレーでプレビュー
+          <div className="gap-preview">
+            <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
+              {data.snippets[nextIndex].furigana}
+            </p>
+            <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
+              {data.snippets[nextIndex].text}
+            </p>
+            {showGapHint && (
+              <p className="gap-hint">スペースキーで次の歌詞へスキップ</p>
+            )}
+          </div>
         ) : (
           <div className="gap-area">
             <p className="lyric-placeholder">♪</p>
