@@ -73,7 +73,7 @@ export default function WatchPage() {
   const [searchArtist, setSearchArtist] = useState('')
   const [searchResults, setSearchResults] = useState<LrclibResult[]>([])
   const [searching, setSearching] = useState(false)
-  const [applying, setApplying] = useState(false)
+  const [applyingId, setApplyingId] = useState<number | null>(null)
 
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
@@ -139,8 +139,8 @@ export default function WatchPage() {
   }, [searchTrack, searchArtist])
 
   const handleApplyLyrics = useCallback(async (result: LrclibResult) => {
-    if (!videoId) return
-    setApplying(true)
+    if (!videoId || applyingId !== null) return
+    setApplyingId(result.id)
     try {
       const params = new URLSearchParams({
         video_id: videoId,
@@ -149,19 +149,18 @@ export default function WatchPage() {
         artist: result.artist,
       })
       const res = await fetch(`/apply_lyrics?${params}`)
-      if (res.ok) {
-        const data = await res.json() as VideoData
-        setState({ status: 'success', data })
-        setCurrentIndex(-1)
-        currentIndexRef.current = -1
-        matcherRef.current = null
-        setMatcher(null)
-        setShowLyricsModal(false)
-      }
+      if (!res.ok) return
+      const data = await res.json() as VideoData
+      setState({ status: 'success', data })
+      setCurrentIndex(-1)
+      currentIndexRef.current = -1
+      matcherRef.current = null
+      setMatcher(null)
+      setShowLyricsModal(false)
     } finally {
-      setApplying(false)
+      setApplyingId(null)
     }
-  }, [videoId])
+  }, [videoId, applyingId])
 
   // Keep refs in sync
   useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
@@ -526,11 +525,13 @@ export default function WatchPage() {
             {searchResults.length > 0 && (
               <ul className="modal-results">
                 {searchResults.map((r) => (
-                  <li key={r.id} className={`modal-result${!r.synced ? ' no-sync' : ''}`} onClick={() => r.synced && !applying && handleApplyLyrics(r)}>
+                  <li key={r.id} className={`modal-result${!r.synced ? ' no-sync' : ''}`} onClick={() => r.synced && applyingId === null && handleApplyLyrics(r)}>
                     <span className="result-title">{r.title}</span>
                     <span className="result-artist">{r.artist}{r.album ? ` — ${r.album}` : ''}</span>
-                    <span className={`result-badge${r.synced ? ' synced' : ''}`}>{r.synced ? '同期あり' : '同期なし'}</span>
-                    {applying && <span className="result-applying">適用中...</span>}
+                    {applyingId === r.id
+                      ? <span className="result-applying">適用中...</span>
+                      : <span className={`result-badge${r.synced ? ' synced' : ''}`}>{r.synced ? '同期あり' : '同期なし'}</span>
+                    }
                   </li>
                 ))}
               </ul>
