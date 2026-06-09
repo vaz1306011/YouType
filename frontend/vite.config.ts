@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/transcript': 'http://localhost:8000',
+      '/search_lyrics': 'http://localhost:8000',
+      '/apply_lyrics': 'http://localhost:8000',
     },
   },
 })
