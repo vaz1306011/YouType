@@ -55,6 +55,22 @@ def _furigana_tokens(text: str) -> list[dict]:
 def _furigana(text: str) -> str:
     return "".join(t["reading"] for t in _furigana_tokens(text))
 
+
+def search_lrclib(track: str, artist: str) -> list[dict]:
+    api = LrcLibAPI(user_agent="youtype/0.1.0")
+    results = api.search_lyrics(track_name=track, artist_name=artist)
+    return [
+        {
+            "id": r.id,
+            "title": r.track_name,
+            "artist": r.artist_name,
+            "album": r.album_name,
+            "duration": r.duration,
+            "synced": bool(r.synced_lyrics),
+        }
+        for r in results
+    ]
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -85,6 +101,34 @@ class Video:
             return cls._from_lrclib(video_id, track_name, artist_name)
         except Exception:
             return cls._from_youtube(video_id, track_name, artist_name)
+
+    @classmethod
+    def from_lrclib_id(
+        cls, video_id: str, lrclib_id: int, title: Optional[str] = None, artist: Optional[str] = None
+    ) -> "Video":
+        api = LrcLibAPI(user_agent="youtype/0.1.0")
+        match = api.get_lyrics_by_id(lrclib_id)
+        if not match or not match.synced_lyrics:
+            raise ValueError(f"lrclib id={lrclib_id} に同期歌詞がありません")
+        snippets = []
+        for s in _parse_lrc(match.synced_lyrics, song_length=match.duration):
+            if not _JAPANESE.search(s["text"]):
+                continue
+            clean = _strip_punct(s["text"])
+            tokens = _furigana_tokens(clean)
+            snippets.append({
+                **s,
+                "text": clean,
+                "furigana": "".join(t["reading"] for t in tokens),
+                "tokens": tokens,
+            })
+        return cls(
+            video_id=video_id,
+            title=title or match.track_name,
+            artist=artist or match.artist_name,
+            snippets=snippets,
+            language="ja",
+        )
 
     @classmethod
     def _from_lrclib(

@@ -25,6 +25,15 @@ interface VideoData {
   is_generated: boolean | null
 }
 
+interface LrclibResult {
+  id: number
+  title: string
+  artist: string
+  album: string | null
+  duration: number | null
+  synced: boolean
+}
+
 type State =
   | { status: 'idle' }
   | { status: 'loading' }
@@ -58,6 +67,14 @@ export default function WatchPage() {
   const [nextIndex, setNextIndex] = useState(-1)
   const [gapProgress, setGapProgress] = useState(0)
 
+  // Lyrics search modal
+  const [showLyricsModal, setShowLyricsModal] = useState(false)
+  const [searchTrack, setSearchTrack] = useState('')
+  const [searchArtist, setSearchArtist] = useState('')
+  const [searchResults, setSearchResults] = useState<LrclibResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [applying, setApplying] = useState(false)
+
   const playerRef = useRef<YT.Player | null>(null)
   const playerDivRef = useRef<HTMLDivElement>(null)
   const currentIndexRef = useRef(-1)
@@ -84,6 +101,66 @@ export default function WatchPage() {
       })
       .then((data) => setState({ status: 'success', data }))
       .catch((err: Error) => setState({ status: 'error', message: err.message }))
+  }, [videoId])
+
+  // Auto-open lyrics modal when no snippets found
+  useEffect(() => {
+    if (state.status === 'success' && state.data.snippets.length === 0) {
+      setSearchTrack(state.data.title ?? '')
+      setSearchArtist(state.data.artist ?? '')
+      setSearchResults([])
+      setShowLyricsModal(true)
+    }
+  }, [state.status])
+
+  const openLyricsModal = useCallback(() => {
+    if (state.status === 'success') {
+      setSearchTrack(state.data.title ?? '')
+      setSearchArtist(state.data.artist ?? '')
+      setSearchResults([])
+    }
+    playerRef.current?.pauseVideo()
+    setShowSettings(false)
+    setShowLyricsModal(true)
+  }, [state])
+
+  const handleLyricsSearch = useCallback(async () => {
+    if (!searchTrack.trim()) return
+    setSearching(true)
+    setSearchResults([])
+    try {
+      const res = await fetch(
+        `/search_lyrics?track=${encodeURIComponent(searchTrack)}&artist=${encodeURIComponent(searchArtist)}`
+      )
+      if (res.ok) setSearchResults(await res.json())
+    } finally {
+      setSearching(false)
+    }
+  }, [searchTrack, searchArtist])
+
+  const handleApplyLyrics = useCallback(async (result: LrclibResult) => {
+    if (!videoId) return
+    setApplying(true)
+    try {
+      const params = new URLSearchParams({
+        video_id: videoId,
+        lrclib_id: String(result.id),
+        title: result.title,
+        artist: result.artist,
+      })
+      const res = await fetch(`/apply_lyrics?${params}`)
+      if (res.ok) {
+        const data = await res.json() as VideoData
+        setState({ status: 'success', data })
+        setCurrentIndex(-1)
+        currentIndexRef.current = -1
+        matcherRef.current = null
+        setMatcher(null)
+        setShowLyricsModal(false)
+      }
+    } finally {
+      setApplying(false)
+    }
   }, [videoId])
 
   // Keep refs in sync
@@ -345,6 +422,10 @@ export default function WatchPage() {
                 </button>
               </label>
               <hr className="settings-divider" />
+              <button className="lyrics-change-btn" onClick={openLyricsModal}>
+                歌詞を変更する
+              </button>
+              <hr className="settings-divider" />
               <label>
                 歌詞サイズ <span>{lyricSize}px</span>
                 <input
@@ -369,9 +450,14 @@ export default function WatchPage() {
       </div>
 
       {nextIndex >= 0 && !current && !showSettings && (
-        <div className="gap-progress-wrap">
-          <div className="gap-progress-bar" style={{ width: `${gapProgress * 100}%` }} />
-        </div>
+        <>
+          <div className="gap-progress-wrap">
+            <div className="gap-progress-bar" style={{ width: `${gapProgress * 100}%` }} />
+          </div>
+          {showGapHint && (
+            <p className="gap-hint">スペースキーで次の歌詞へスキップ</p>
+          )}
+        </>
       )}
 
       <div className="current-lyric">
@@ -387,7 +473,7 @@ export default function WatchPage() {
             </p>
           </>
         ) : current ? (
-          <>
+          <div key={currentIndex} className="lyric-slide">
             <p className="furigana" style={{ fontSize: furiganaSize }}>
               <span className="typed">{current.furigana.slice(0, doneHLen)}</span>
               <span>{current.furigana.slice(doneHLen)}</span>
@@ -396,7 +482,7 @@ export default function WatchPage() {
               <span className="typed">{current.text.slice(0, doneSLen)}</span>
               <span>{current.text.slice(doneSLen)}</span>
             </p>
-          </>
+          </div>
         ) : nextIndex >= 0 ? (
           // ギャップ中：次の歌詞をグレーでプレビュー
           <div className="gap-preview">
@@ -406,19 +492,55 @@ export default function WatchPage() {
             <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
               {data.snippets[nextIndex].text}
             </p>
-            {showGapHint && (
-              <p className="gap-hint">スペースキーで次の歌詞へスキップ</p>
-            )}
           </div>
         ) : (
           <div className="gap-area">
             <p className="lyric-placeholder">♪</p>
-            {showGapHint && (
-              <p className="gap-hint">スペースキーで次の歌詞へスキップ</p>
-            )}
           </div>
         )}
       </div>
+
+      {showLyricsModal && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && state.status === 'success' && state.data.snippets.length > 0) setShowLyricsModal(false) }}>
+          <div className="modal">
+            <h2 className="modal-title">歌詞を検索</h2>
+            <div className="modal-fields">
+              <input
+                className="modal-input"
+                placeholder="曲名"
+                value={searchTrack}
+                onChange={(e) => setSearchTrack(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLyricsSearch()}
+              />
+              <input
+                className="modal-input"
+                placeholder="アーティスト（省略可）"
+                value={searchArtist}
+                onChange={(e) => setSearchArtist(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLyricsSearch()}
+              />
+              <button className="modal-search-btn" onClick={handleLyricsSearch} disabled={searching}>
+                {searching ? '検索中...' : '検索'}
+              </button>
+            </div>
+            {searchResults.length > 0 && (
+              <ul className="modal-results">
+                {searchResults.map((r) => (
+                  <li key={r.id} className={`modal-result${!r.synced ? ' no-sync' : ''}`} onClick={() => r.synced && !applying && handleApplyLyrics(r)}>
+                    <span className="result-title">{r.title}</span>
+                    <span className="result-artist">{r.artist}{r.album ? ` — ${r.album}` : ''}</span>
+                    <span className={`result-badge${r.synced ? ' synced' : ''}`}>{r.synced ? '同期あり' : '同期なし'}</span>
+                    {applying && <span className="result-applying">適用中...</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {searchResults.length === 0 && !searching && searchTrack && (
+              <p className="modal-empty">結果がありません</p>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   )
 }

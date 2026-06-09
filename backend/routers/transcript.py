@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
-from backend.models import Video
+from backend.models import Video, search_lrclib
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -51,6 +51,28 @@ def _save_cache(video: Video) -> None:
     path = _cache_path(video.video_id)
     payload = {"_v": _CACHE_VERSION, **asdict(video)}
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+@router.get("/search_lyrics")
+def get_search_lyrics(track: str, artist: str = "") -> list[dict]:
+    try:
+        return search_lrclib(track, artist)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.get("/apply_lyrics")
+def get_apply_lyrics(video_id: str, lrclib_id: int, title: str = "", artist: str = "") -> Video:
+    try:
+        video = Video.from_lrclib_id(
+            video_id, lrclib_id,
+            title=title or None,
+            artist=artist or None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _save_cache(video)
+    return video
 
 
 @router.get("/transcript")
