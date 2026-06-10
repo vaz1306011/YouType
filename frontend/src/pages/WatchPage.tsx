@@ -459,9 +459,9 @@ export default function WatchPage() {
         </>
       )}
 
-      <div className="current-lyric">
+      <div className="lyric-area">
         {showSettings ? (
-          <>
+          <div className="current-lyric">
             <p className="furigana" style={{ fontSize: furiganaSize }}>
               <span className="typed">{previewFurigana.slice(0, previewHLen)}</span>
               <span>{previewFurigana.slice(previewHLen)}</span>
@@ -470,21 +470,32 @@ export default function WatchPage() {
               <span className="typed">{previewText.slice(0, previewSLen)}</span>
               <span>{previewText.slice(previewSLen)}</span>
             </p>
-          </>
-        ) : current ? (
-          <div key={currentIndex} className="lyric-slide">
-            <p className="furigana" style={{ fontSize: furiganaSize }}>
-              <span className="typed">{current.furigana.slice(0, doneHLen)}</span>
-              <span>{current.furigana.slice(doneHLen)}</span>
-            </p>
-            <p className="lyric-text" style={{ fontSize: lyricSize }}>
-              <span className="typed">{current.text.slice(0, doneSLen)}</span>
-              <span>{current.text.slice(doneSLen)}</span>
-            </p>
           </div>
+        ) : current ? (
+          <>
+            <div key={currentIndex} className="current-lyric lyric-slide">
+              <p className="furigana" style={{ fontSize: furiganaSize }}>
+                <span className="typed">{current.furigana.slice(0, doneHLen)}</span>
+                <span>{current.furigana.slice(doneHLen)}</span>
+              </p>
+              <p className="lyric-text" style={{ fontSize: lyricSize }}>
+                <span className="typed">{current.text.slice(0, doneSLen)}</span>
+                <span>{current.text.slice(doneSLen)}</span>
+              </p>
+            </div>
+            {currentIndex + 1 < data.snippets.length && (
+              <div key={`next-${currentIndex}`} className="next-lyric lyric-slide">
+                <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
+                  {data.snippets[currentIndex + 1].furigana}
+                </p>
+                <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
+                  {data.snippets[currentIndex + 1].text}
+                </p>
+              </div>
+            )}
+          </>
         ) : nextIndex >= 0 ? (
-          // ギャップ中：次の歌詞をグレーでプレビュー
-          <div className="gap-preview">
+          <div className="current-lyric">
             <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
               {data.snippets[nextIndex].furigana}
             </p>
@@ -493,7 +504,7 @@ export default function WatchPage() {
             </p>
           </div>
         ) : (
-          <div className="gap-area">
+          <div className="current-lyric">
             <p className="lyric-placeholder">♪</p>
           </div>
         )}
