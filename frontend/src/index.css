@@ -153,7 +153,7 @@ code {
   border-radius: 12px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
-  overflow: hidden;
+  overflow: clip;
 }
 
 .lyric-pair {
@@ -349,20 +349,14 @@ code {
 
 /* Lyric slide-up animation */
 .lyric-slide {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  animation: lyric-in 0.3s ease-out;
+  animation: lyric-up 0.3s ease-out both;
 }
 
-@keyframes lyric-in {
+@keyframes lyric-up {
   from {
-    opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(var(--slide-offset, 50%));
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
