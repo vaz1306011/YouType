@@ -141,36 +141,40 @@ code {
   height: 100%;
 }
 
-.lyric-area {
-  width: 100%;
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .current-lyric {
   width: 100%;
+  max-width: 720px;
   min-height: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   padding: 20px 16px;
   border-radius: 12px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
+  overflow: hidden;
 }
 
-.next-lyric {
-  width: 100%;
+.lyric-pair {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 16px;
-  border-radius: 10px;
+  gap: 16px;
+  width: 100%;
+}
+
+.lyric-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.lyric-row.next {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  width: 100%;
 }
 
 .furigana {
