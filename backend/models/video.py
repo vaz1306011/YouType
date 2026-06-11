@@ -44,6 +44,10 @@ def _split_mixed(surface: str, reading: str) -> list[dict]:
 
 _NANI_PARTICLES = set("もがをにでのか")
 
+_READING_OVERRIDES = {
+    ("君", "くん"): "きみ",
+}
+
 
 def _furigana_tokens(text: str) -> list[dict]:
     """形態素ごとに {surface, reading} のリストを返す"""
@@ -57,6 +61,8 @@ def _furigana_tokens(text: str) -> list[dict]:
             next_surf = words[i + 1].surface
             if next_surf and next_surf[0] in _NANI_PARTICLES:
                 reading = "なに"
+        # 固定の読み修正（歌詞向け）
+        reading = _READING_OVERRIDES.get((surface, reading), reading)
         result.extend(_split_mixed(surface, reading))
     return result
 
