@@ -42,12 +42,21 @@ def _split_mixed(surface: str, reading: str) -> list[dict]:
     return [{"surface": surface, "reading": reading}]
 
 
+_NANI_PARTICLES = set("もがをにでのか")
+
+
 def _furigana_tokens(text: str) -> list[dict]:
     """形態素ごとに {surface, reading} のリストを返す"""
+    words = _tagger(text)
     result = []
-    for w in _tagger(text):
+    for i, w in enumerate(words):
         surface = w.surface
         reading = _to_hiragana(w.feature.kana or surface)
+        # 「何」+ 助詞（も/が/を/に/で/の/か）→「なに」に修正
+        if surface == "何" and reading == "なん" and i + 1 < len(words):
+            next_surf = words[i + 1].surface
+            if next_surf and next_surf[0] in _NANI_PARTICLES:
+                reading = "なに"
         result.extend(_split_mixed(surface, reading))
     return result
 
