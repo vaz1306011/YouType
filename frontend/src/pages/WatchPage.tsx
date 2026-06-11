@@ -316,11 +316,29 @@ export default function WatchPage() {
 
   // Keyboard input
   const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === ' ' && nextSnippetIndexRef.current >= 0) {
-      e.preventDefault()
-      const target = snippetsRef.current[nextSnippetIndexRef.current].start - 2
-      playerRef.current?.seekTo(Math.max(0, target), true)
-      return
+    if (e.key === ' ') {
+      // Gap 中：跳到下一句
+      if (nextSnippetIndexRef.current >= 0) {
+        e.preventDefault()
+        const target = snippetsRef.current[nextSnippetIndexRef.current].start - 2
+        playerRef.current?.seekTo(Math.max(0, target), true)
+        return
+      }
+      // 當前歌詞打完：跳到下一句
+      const done = matcherRef.current && matcherRef.current.tokenIndex >= matcherRef.current.tokens.length
+      const nextIdx = currentIndexRef.current + 1
+      if (done && nextIdx < snippetsRef.current.length) {
+        e.preventDefault()
+        const target = snippetsRef.current[nextIdx].start
+        playerRef.current?.seekTo(Math.max(0, target - 0.2), true)
+        currentIndexRef.current = nextIdx
+        pendingIndexRef.current = -1
+        setCurrentIndex(nextIdx)
+        const newMatcher = createMatcher(snippetsRef.current[nextIdx].furigana)
+        matcherRef.current = newMatcher
+        setMatcher(newMatcher)
+        return
+      }
     }
 
     if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return
