@@ -162,6 +162,14 @@ export default function WatchPage() {
     }
   }, [videoId, applyingId])
 
+  // Update page title
+  useEffect(() => {
+    if (state.status === 'success' && state.data.title) {
+      document.title = `${state.data.title} - Youtype`
+    }
+    return () => { document.title = 'Youtype' }
+  }, [state])
+
   // Keep refs in sync
   useEffect(() => { practiceModeRef.current = practiceMode }, [practiceMode])
   useEffect(() => {
