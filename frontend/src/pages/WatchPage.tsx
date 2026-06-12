@@ -275,7 +275,7 @@ export default function WatchPage() {
                 setShowGapHint(false)
               }
 
-              // 練習モード: 次の行の0.5秒前に未完なら事前停止
+              // 練習モード: 次の行の0.25秒前に未完なら事前停止
               if (
                 practiceModeRef.current &&
                 idx >= 0 &&
@@ -286,7 +286,7 @@ export default function WatchPage() {
                 const notDone =
                   matcherRef.current !== null &&
                   matcherRef.current.tokenIndex < matcherRef.current.tokens.length
-                if (notDone && nextIdx < snippets.length && snippets[nextIdx].start - t <= 0.5) {
+                if (notDone && nextIdx < snippets.length && snippets[nextIdx].start - t <= 0.25) {
                   player.pauseVideo()
                   pendingIndexRef.current = nextIdx
                 }
