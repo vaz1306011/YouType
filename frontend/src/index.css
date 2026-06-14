@@ -11,8 +11,8 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -238,7 +238,10 @@ code {
   color: var(--text);
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .toggle-btn.on {
@@ -263,7 +266,9 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .settings-btn.on {
@@ -302,7 +307,7 @@ code {
   font-family: var(--mono);
 }
 
-.settings-panel input[type='range'] {
+.settings-panel input[type="range"] {
   width: 100%;
   accent-color: var(--accent);
 }
@@ -373,7 +378,9 @@ code {
   cursor: pointer;
   transition: opacity 0.15s;
 }
-.lyrics-change-btn:hover { opacity: 0.8; }
+.lyrics-change-btn:hover {
+  opacity: 0.8;
+}
 
 /* Lyrics search modal */
 .modal-overlay {
@@ -427,7 +434,9 @@ code {
   outline: none;
   transition: border-color 0.15s;
 }
-.modal-input:focus { border-color: var(--accent-border); }
+.modal-input:focus {
+  border-color: var(--accent-border);
+}
 
 .modal-search-btn {
   padding: 8px 20px;
@@ -440,8 +449,13 @@ code {
   cursor: pointer;
   transition: opacity 0.15s;
 }
-.modal-search-btn:disabled { opacity: 0.5; cursor: default; }
-.modal-search-btn:not(:disabled):hover { opacity: 0.85; }
+.modal-search-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.modal-search-btn:not(:disabled):hover {
+  opacity: 0.85;
+}
 
 .modal-results {
   list-style: none;
@@ -461,10 +475,18 @@ code {
   border-radius: 10px;
   border: 1px solid var(--border);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
-.modal-result:hover:not(.no-sync) { background: var(--accent-bg); border-color: var(--accent-border); }
-.modal-result.no-sync { opacity: 0.45; cursor: default; }
+.modal-result:hover:not(.no-sync) {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+.modal-result.no-sync {
+  opacity: 0.45;
+  cursor: default;
+}
 
 .result-title {
   font-size: 14px;
@@ -532,10 +554,22 @@ code {
   animation: bounce 1.2s infinite ease-in-out;
 }
 
-.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40%            { transform: scale(1);   opacity: 1;   }
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

@@ -1,11 +1,11 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import './index.css'
-import WatchPage from './pages/WatchPage'
-import HomePage from './pages/HomePage'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import "./index.css";
+import WatchPage from "./pages/WatchPage";
+import HomePage from "./pages/HomePage";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
@@ -14,4 +14,4 @@ createRoot(document.getElementById('root')!).render(
       </Routes>
     </BrowserRouter>
   </StrictMode>,
-)
+);

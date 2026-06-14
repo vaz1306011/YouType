@@ -62,10 +62,13 @@ def get_search_lyrics(track: str, artist: str = "") -> list[dict]:
 
 
 @router.get("/apply_lyrics")
-def get_apply_lyrics(video_id: str, lrclib_id: int, title: str = "", artist: str = "") -> Video:
+def get_apply_lyrics(
+    video_id: str, lrclib_id: int, title: str = "", artist: str = ""
+) -> Video:
     try:
         video = Video.from_lrclib_id(
-            video_id, lrclib_id,
+            video_id,
+            lrclib_id,
             title=title or None,
             artist=artist or None,
         )
