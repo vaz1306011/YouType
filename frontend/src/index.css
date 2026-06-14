@@ -220,6 +220,20 @@ code {
   color: var(--text);
   pointer-events: none;
 }
+.start-btn {
+  pointer-events: auto;
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.start-btn:hover {
+  opacity: 0.8;
+}
 
 .typed {
   color: var(--accent);

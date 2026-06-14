@@ -95,6 +95,9 @@ export default function WatchPage() {
   const [showAutoChoice, setShowAutoChoice] = useState(false);
   const [applyingAutoCC, setApplyingAutoCC] = useState(false);
   const [paused, setPaused] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
+  const hasStartedRef = useRef(false);
+  const [ended, setEnded] = useState(false);
 
   const playerRef = useRef<YT.Player | null>(null);
   const playerDivRef = useRef<HTMLDivElement>(null);
@@ -249,6 +252,9 @@ export default function WatchPage() {
     pausedRef.current = paused;
   }, [paused]);
   useEffect(() => {
+    hasStartedRef.current = hasStarted;
+  }, [hasStarted]);
+  useEffect(() => {
     if (state.status === "success") snippetsRef.current = state.data.snippets;
   }, [state]);
 
@@ -314,8 +320,13 @@ export default function WatchPage() {
             if (e.data === window.YT.PlayerState.PLAYING) {
               practicePausedRef.current = false;
               setPaused(false);
+              setHasStarted(true);
+              setEnded(false);
             } else if (e.data === window.YT.PlayerState.PAUSED) {
               setPaused(!practicePausedRef.current);
+            } else if (e.data === window.YT.PlayerState.ENDED) {
+              setEnded(true);
+              setPaused(true);
             }
             if (e.data === window.YT.PlayerState.BUFFERING) {
               const snips = snippetsRef.current;
@@ -457,8 +468,12 @@ export default function WatchPage() {
   // Keyboard input
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === " ") {
+      e.preventDefault();
+      if (!hasStartedRef.current) {
+        playerRef.current?.playVideo();
+        return;
+      }
       if (nextSnippetIndexRef.current >= 0) {
-        e.preventDefault();
         const target = snippetsRef.current[nextSnippetIndexRef.current].start - 3;
         playerRef.current?.seekTo(Math.max(0, target), true);
         return;
@@ -656,7 +671,7 @@ export default function WatchPage() {
       )}
 
       <div
-        className={`current-lyric${paused && !showSettings ? " paused" : ""}`}
+        className={`current-lyric${paused && hasStarted && !showSettings ? " paused" : ""}`}
         ref={lyricContainerRef}
       >
         {showSettings ? (
@@ -724,7 +739,27 @@ export default function WatchPage() {
           </div>
         )}
         {paused && !showSettings && (
-          <div className="paused-overlay">一時停止中</div>
+          <div className="paused-overlay">
+            {ended ? (
+              <button className="start-btn" onClick={() => {
+                playerRef.current?.seekTo(0, true);
+                playerRef.current?.playVideo();
+                currentIndexRef.current = -1;
+                pendingIndexRef.current = -1;
+                setCurrentIndex(-1);
+                matcherRef.current = null;
+                setMatcher(null);
+                setGapProgress(0);
+                setSongProgress(0);
+              }}>
+                ▶ もう一度
+              </button>
+            ) : hasStarted ? "一時停止中" : (
+              <button className="start-btn" onClick={() => playerRef.current?.playVideo()}>
+                ▶ スタート (Space)
+              </button>
+            )}
+          </div>
         )}
       </div>
 
