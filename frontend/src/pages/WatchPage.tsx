@@ -83,6 +83,7 @@ export default function WatchPage() {
   const [showGapHint, setShowGapHint] = useState(false);
   const [nextIndex, setNextIndex] = useState(-1);
   const [gapProgress, setGapProgress] = useState(0);
+  const [songProgress, setSongProgress] = useState(0);
 
   // Lyrics search modal
   const [showLyricsModal, setShowLyricsModal] = useState(false);
@@ -352,6 +353,8 @@ export default function WatchPage() {
               )
                 return;
               const t = player.getCurrentTime();
+              const duration = player.getDuration();
+              if (duration > 0) setSongProgress(t / duration);
               const idx = snippets.findLastIndex((s) => s.start <= t);
 
               // Progress bar: current lyric start → next lyric start
@@ -637,6 +640,12 @@ export default function WatchPage() {
             <div
               className="gap-progress-bar"
               style={{ width: `${gapProgress * 100}%` }}
+            />
+          </div>
+          <div className="song-progress-wrap">
+            <div
+              className="song-progress-bar"
+              style={{ width: `${songProgress * 100}%` }}
             />
           </div>
           {showGapHint && (

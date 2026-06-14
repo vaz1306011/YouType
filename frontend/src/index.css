@@ -402,6 +402,24 @@ code {
   transition: width 0.1s linear;
 }
 
+.song-progress-wrap {
+  width: 100%;
+  max-width: 720px;
+  height: 2px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.song-progress-bar {
+  height: 100%;
+  background: var(--text);
+  border-radius: 2px;
+  opacity: 0.4;
+  transition: width 0.2s linear;
+}
+
 .preview-text {
   opacity: 0.35;
 }
