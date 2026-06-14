@@ -5,13 +5,9 @@ from typing import Any, ClassVar, Optional
 
 import fugashi
 from lrclib import LrcLibAPI
-from youtube_transcript_api import (
-    NoTranscriptFound,
-    TranscriptsDisabled,
-    YouTubeTranscriptApi,
-)
+from youtube_transcript_api import YouTubeTranscriptApi
 
-_tagger = fugashi.Tagger()
+_tagger = fugashi.Tagger()  # type: ignore[attr-defined]
 
 # ひらがな・カタカナ・漢字・半角カタカナ・英数字以外を除去
 _PUNCT = re.compile(r"[^぀-ゟ゠-ヿ一-鿿々〃ゞゝｦ-ﾟa-zA-Z0-9]")
@@ -240,7 +236,10 @@ class Video:
 
     @classmethod
     def from_auto_cc(
-        cls, video_id: str, track_name: Optional[str] = None, artist: Optional[str] = None
+        cls,
+        video_id: str,
+        track_name: Optional[str] = None,
+        artist: Optional[str] = None,
     ) -> "Video":
         logger.debug(f"[{video_id}] YouTube 自動生成CC字幕を取得します")
         if not track_name:
@@ -259,8 +258,12 @@ class Video:
 
     @classmethod
     def _build_from_transcript(
-        cls, video_id: str, track_name: str, artist: Optional[str],
-        transcript: Any, source: str,
+        cls,
+        video_id: str,
+        track_name: str,
+        artist: Optional[str],
+        transcript: Any,
+        source: str,
     ) -> "Video":
         fetched = transcript.fetch()
         raw = fetched.to_raw_data()
@@ -291,9 +294,7 @@ class Video:
         try:
             ytt_api = YouTubeTranscriptApi()
             transcript_list = ytt_api.list(video_id)
-            transcript_list.find_generated_transcript(
-                cls.FALLBACK_GENERATED_LANGUAGES
-            )
+            transcript_list.find_generated_transcript(cls.FALLBACK_GENERATED_LANGUAGES)
             return True
         except Exception:
             return False

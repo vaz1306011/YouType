@@ -197,7 +197,9 @@ export default function WatchPage() {
     if (!videoId || applyingAutoCC) return;
     setApplyingAutoCC(true);
     try {
-      const res = await fetch(`/apply_auto_cc?video_id=${encodeURIComponent(videoId)}`);
+      const res = await fetch(
+        `/apply_auto_cc?video_id=${encodeURIComponent(videoId)}`,
+      );
       if (!res.ok) return;
       const data = (await res.json()) as VideoData;
       setState({ status: "success", data });
@@ -515,7 +517,11 @@ export default function WatchPage() {
         {data.artist && <p className="artist">{data.artist}</p>}
         {data.source && (
           <span className={`source-badge source-${data.source}`}>
-            {data.source === "lrclib" ? "LRCLIB" : data.source === "youtube" ? "CC字幕" : "自動CC字幕"}
+            {data.source === "lrclib"
+              ? "LRCLIB"
+              : data.source === "youtube"
+                ? "CC字幕"
+                : "自動CC字幕"}
           </span>
         )}
       </header>
@@ -677,10 +683,18 @@ export default function WatchPage() {
               同期歌詞が見つかりませんでした。自動生成CC字幕が利用可能です。
             </p>
             <div className="auto-choice-buttons">
-              <button className="auto-choice-btn primary" onClick={handleApplyAutoCC} disabled={applyingAutoCC}>
+              <button
+                className="auto-choice-btn primary"
+                onClick={handleApplyAutoCC}
+                disabled={applyingAutoCC}
+              >
                 {applyingAutoCC ? "適用中..." : "自動CC字幕を使う"}
               </button>
-              <button className="auto-choice-btn secondary" onClick={handleChooseLrclib} disabled={applyingAutoCC}>
+              <button
+                className="auto-choice-btn secondary"
+                onClick={handleChooseLrclib}
+                disabled={applyingAutoCC}
+              >
                 LRCLIBで手動検索
               </button>
             </div>
