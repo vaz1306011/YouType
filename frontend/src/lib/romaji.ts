@@ -216,10 +216,8 @@ export function advance(
     const next = state.tokens[state.tokenIndex + 1];
     const nextRomaji = next ? (TABLE[next]?.[0] ?? "") : "";
     if (key === nextRomaji[0] && state.typed === "") {
-      // 子音重複モード: っ を消費し、次トークンで同じキーを最初に処理
-      const nextState = advanceToken({ ...state, typed: "" });
-      // 次トークンの先頭をそのキーで advance
-      return advance(nextState, key);
+      // 子音重複モード: っ を消費するだけ（次のキー入力で次トークンを処理）
+      return [advanceToken({ ...state, typed: "" }), "ok"];
     }
   }
 
