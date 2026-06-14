@@ -1,6 +1,5 @@
 import logging
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Optional
 
@@ -23,10 +22,7 @@ def _strip_punct(text: str) -> str:
 
 
 def _to_hiragana(text: str) -> str:
-    return "".join(
-        chr(ord(c) - 0x60) if "ァ" <= c <= "ン" else c
-        for c in text
-    )
+    return "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ン" else c for c in text)
 
 
 def _split_mixed(surface: str, reading: str) -> list[dict]:
@@ -86,6 +82,7 @@ def search_lrclib(track: str, artist: str) -> list[dict]:
         for r in results
     ]
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -107,10 +104,13 @@ class Video:
         cls,
         video_id: str,
     ) -> "Video":
+        track_name: str = ""
+        artist_name: Optional[str] = None
         try:
             track_name, artist_name = _fetch_youtube_music_info(video_id)
         except Exception as e:
             logger.warning(f"[{video_id}] yt_dlpからの情報の取得に失敗しました: {e}")
+            return cls(video_id=video_id, title=None, artist=None)
 
         try:
             return cls._from_lrclib(video_id, track_name, artist_name)
@@ -119,7 +119,11 @@ class Video:
 
     @classmethod
     def from_lrclib_id(
-        cls, video_id: str, lrclib_id: int, title: Optional[str] = None, artist: Optional[str] = None
+        cls,
+        video_id: str,
+        lrclib_id: int,
+        title: Optional[str] = None,
+        artist: Optional[str] = None,
     ) -> "Video":
         api = LrcLibAPI(user_agent="youtype/0.1.0")
         match = api.get_lyrics_by_id(lrclib_id)
@@ -131,12 +135,14 @@ class Video:
                 continue
             clean = _strip_punct(s["text"])
             tokens = _furigana_tokens(clean)
-            snippets.append({
-                **s,
-                "text": clean,
-                "furigana": "".join(t["reading"] for t in tokens),
-                "tokens": tokens,
-            })
+            snippets.append(
+                {
+                    **s,
+                    "text": clean,
+                    "furigana": "".join(t["reading"] for t in tokens),
+                    "tokens": tokens,
+                }
+            )
         return cls(
             video_id=video_id,
             title=title or match.track_name,
@@ -182,12 +188,14 @@ class Video:
                 continue
             clean = _strip_punct(s["text"])
             tokens = _furigana_tokens(clean)
-            snippets.append({
-                **s,
-                "text": clean,
-                "furigana": "".join(t["reading"] for t in tokens),
-                "tokens": tokens,
-            })
+            snippets.append(
+                {
+                    **s,
+                    "text": clean,
+                    "furigana": "".join(t["reading"] for t in tokens),
+                    "tokens": tokens,
+                }
+            )
         return cls(
             video_id=video_id,
             title=track_name,
@@ -220,12 +228,14 @@ class Video:
             for s in raw:
                 clean = _strip_punct(s["text"])
                 tokens = _furigana_tokens(clean)
-                snippets.append({
-                    **s,
-                    "text": clean,
-                    "furigana": "".join(t["reading"] for t in tokens),
-                    "tokens": tokens,
-                })
+                snippets.append(
+                    {
+                        **s,
+                        "text": clean,
+                        "furigana": "".join(t["reading"] for t in tokens),
+                        "tokens": tokens,
+                    }
+                )
             return cls(
                 video_id=video_id,
                 title=track_name,
