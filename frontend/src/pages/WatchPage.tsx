@@ -353,7 +353,10 @@ export default function WatchPage() {
               const t = player.getCurrentTime();
               const duration = player.getDuration();
               if (duration > 0) setSongProgress(t / duration);
-              const idx = snippets.findLastIndex((s) => s.start <= t);
+              const currentDone = matcherRef.current !== null
+                && matcherRef.current.tokenIndex >= matcherRef.current.tokens.length;
+              const earlyOffset = currentDone ? 0.5 : 0;
+              const idx = snippets.findLastIndex((s) => s.start <= t + earlyOffset);
 
               // Progress bar: current lyric start → next lyric start
               if (idx >= 0 && idx + 1 < snippets.length) {
