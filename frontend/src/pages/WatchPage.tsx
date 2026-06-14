@@ -14,7 +14,7 @@ import {
   type MatchState,
 } from "../lib/romaji";
 import { useLocalStorage } from "../lib/useLocalStorage";
-import type { Snippet, LrclibResult, State } from "../types";
+import type { Snippet, VideoData, LrclibResult, State } from "../types";
 import AutoChoiceModal from "../components/AutoChoiceModal";
 import LyricsSearchModal from "../components/LyricsSearchModal";
 import "./WatchPage.css";
@@ -256,7 +256,10 @@ export default function WatchPage() {
       return;
     }
     const typedWidth = typedRef.current?.offsetWidth ?? 0;
-    const offset = Math.min(Math.max(0, typedWidth - containerWidth / 3), maxScroll);
+    const offset = Math.min(
+      Math.max(0, typedWidth - containerWidth / 3),
+      maxScroll,
+    );
     setScrollX(offset);
   }, [matcher, currentIndex]);
 
@@ -348,25 +351,32 @@ export default function WatchPage() {
               const t = player.getCurrentTime();
               const duration = player.getDuration();
               if (duration > 0) setSongProgress(t / duration);
-              const currentDone = matcherRef.current !== null
-                && matcherRef.current.tokenIndex >= matcherRef.current.tokens.length;
+              const currentDone =
+                matcherRef.current !== null &&
+                matcherRef.current.tokenIndex >=
+                  matcherRef.current.tokens.length;
               const earlyOffset = currentDone ? 0.5 : 0;
-              const idx = snippets.findLastIndex((s) => s.start <= t + earlyOffset);
+              const idx = snippets.findLastIndex(
+                (s) => s.start <= t + earlyOffset,
+              );
 
               // Progress bar: current lyric start → next lyric start
               if (idx >= 0 && idx + 1 < snippets.length) {
                 const curStart = snippets[idx].start;
                 const nextStart = snippets[idx + 1].start;
-                const progress = nextStart > curStart
-                  ? Math.max(0, Math.min(1, (t - curStart) / (nextStart - curStart)))
-                  : 1;
+                const progress =
+                  nextStart > curStart
+                    ? Math.max(
+                        0,
+                        Math.min(1, (t - curStart) / (nextStart - curStart)),
+                      )
+                    : 1;
                 setGapProgress(progress);
                 setNextIndex(idx + 1);
               } else if (idx < 0 && snippets.length > 0) {
                 const nextStart = snippets[0].start;
-                const progress = nextStart > 0
-                  ? Math.max(0, Math.min(1, t / nextStart))
-                  : 1;
+                const progress =
+                  nextStart > 0 ? Math.max(0, Math.min(1, t / nextStart)) : 1;
                 setGapProgress(progress);
                 setNextIndex(0);
               } else {
@@ -375,11 +385,18 @@ export default function WatchPage() {
               }
 
               // Skip hint: typing done and next lyric >3s away
-              const inGap = idx < 0 || t > snippets[idx].start + snippets[idx].duration;
-              const typingDone = matcherRef.current !== null
-                && matcherRef.current.tokenIndex >= matcherRef.current.tokens.length;
+              const inGap =
+                idx < 0 || t > snippets[idx].start + snippets[idx].duration;
+              const typingDone =
+                matcherRef.current !== null &&
+                matcherRef.current.tokenIndex >=
+                  matcherRef.current.tokens.length;
               const nextIdx2 = idx + 1;
-              if ((inGap || typingDone) && nextIdx2 < snippets.length && snippets[nextIdx2].start - t > 3) {
+              if (
+                (inGap || typingDone) &&
+                nextIdx2 < snippets.length &&
+                snippets[nextIdx2].start - t > 3
+              ) {
                 nextSnippetIndexRef.current = nextIdx2;
                 setShowGapHint(true);
               } else {
@@ -458,7 +475,8 @@ export default function WatchPage() {
         return;
       }
       if (nextSnippetIndexRef.current >= 0) {
-        const target = snippetsRef.current[nextSnippetIndexRef.current].start - 3;
+        const target =
+          snippetsRef.current[nextSnippetIndexRef.current].start - 3;
         playerRef.current?.seekTo(Math.max(0, target), true);
         return;
       }
@@ -643,9 +661,7 @@ export default function WatchPage() {
                 style={{ width: `${gapProgress * 100}%` }}
               />
             </div>
-            {showGapHint && (
-              <span className="gap-hint">Space: スキップ</span>
-            )}
+            {showGapHint && <span className="gap-hint">Space: スキップ</span>}
           </div>
           <div className="song-progress-wrap">
             <div
@@ -653,7 +669,7 @@ export default function WatchPage() {
               style={{ width: `${songProgress * 100}%` }}
             />
           </div>
-</>
+        </>
       )}
 
       <div
@@ -675,65 +691,99 @@ export default function WatchPage() {
           </div>
         ) : current ? (
           <>
-          {exitingIndex >= 0 && data.snippets[exitingIndex] && (
-            <div className="lyric-pair lyric-exit">
-              <div className="lyric-row">
-                <p className="furigana" style={{ fontSize: furiganaSize, transform: `translateX(-${exitingScrollX}px)` }}>
-                  <span className="typed">{data.snippets[exitingIndex].furigana}</span>
-                </p>
-                <p className="lyric-text" style={{ fontSize: lyricSize }}>
-                  <span className="typed">{data.snippets[exitingIndex].text}</span>
-                </p>
-              </div>
-            </div>
-          )}
-          <div key={currentIndex} className={`lyric-pair${currentIndex > 0 ? " lyric-slide" : ""}`}>
-            <div className="lyric-row">
-              <p ref={furiganaRef} className={`furigana${scrollTransition ? " lyric-scroll" : ""}`} style={{ fontSize: furiganaSize, transform: `translateX(-${scrollX}px)` }}>
-                <span className="typed" ref={typedRef}>
-                  {current.furigana.slice(0, doneHLen)}
-                </span>
-                <span>{current.furigana.slice(doneHLen)}</span>
-              </p>
-              <p className="lyric-text" style={{ fontSize: lyricSize }}>
-                <span className="typed">{current.text.slice(0, doneSLen)}</span>
-                <span>{current.text.slice(doneSLen)}</span>
-              </p>
-            </div>
-            {currentIndex + 1 < data.snippets.length && (
-              <div className="lyric-row next">
-                <p
-                  className="furigana preview-text"
-                  style={{ fontSize: furiganaSize }}
-                >
-                  {data.snippets[currentIndex + 1].furigana}
-                </p>
-                <p
-                  className="lyric-text preview-text"
-                  style={{ fontSize: lyricSize }}
-                >
-                  {data.snippets[currentIndex + 1].text}
-                </p>
+            {exitingIndex >= 0 && data.snippets[exitingIndex] && (
+              <div className="lyric-pair lyric-exit">
+                <div className="lyric-row">
+                  <p
+                    className="furigana"
+                    style={{
+                      fontSize: furiganaSize,
+                      transform: `translateX(-${exitingScrollX}px)`,
+                    }}
+                  >
+                    <span className="typed">
+                      {data.snippets[exitingIndex].furigana}
+                    </span>
+                  </p>
+                  <p className="lyric-text" style={{ fontSize: lyricSize }}>
+                    <span className="typed">
+                      {data.snippets[exitingIndex].text}
+                    </span>
+                  </p>
+                </div>
               </div>
             )}
-          </div>
+            <div
+              key={currentIndex}
+              className={`lyric-pair${currentIndex > 0 ? " lyric-slide" : ""}`}
+            >
+              <div className="lyric-row">
+                <p
+                  ref={furiganaRef}
+                  className={`furigana${scrollTransition ? " lyric-scroll" : ""}`}
+                  style={{
+                    fontSize: furiganaSize,
+                    transform: `translateX(-${scrollX}px)`,
+                  }}
+                >
+                  <span className="typed" ref={typedRef}>
+                    {current.furigana.slice(0, doneHLen)}
+                  </span>
+                  <span>{current.furigana.slice(doneHLen)}</span>
+                </p>
+                <p className="lyric-text" style={{ fontSize: lyricSize }}>
+                  <span className="typed">
+                    {current.text.slice(0, doneSLen)}
+                  </span>
+                  <span>{current.text.slice(doneSLen)}</span>
+                </p>
+              </div>
+              {currentIndex + 1 < data.snippets.length && (
+                <div className="lyric-row next">
+                  <p
+                    className="furigana preview-text"
+                    style={{ fontSize: furiganaSize }}
+                  >
+                    {data.snippets[currentIndex + 1].furigana}
+                  </p>
+                  <p
+                    className="lyric-text preview-text"
+                    style={{ fontSize: lyricSize }}
+                  >
+                    {data.snippets[currentIndex + 1].text}
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         ) : data.snippets.length > 0 ? (
           <div className="lyric-pair">
             <div className="lyric-row">
-              <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
+              <p
+                className="furigana preview-text"
+                style={{ fontSize: furiganaSize }}
+              >
                 {data.snippets[nextIndex >= 0 ? nextIndex : 0].furigana}
               </p>
-              <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
+              <p
+                className="lyric-text preview-text"
+                style={{ fontSize: lyricSize }}
+              >
                 {data.snippets[nextIndex >= 0 ? nextIndex : 0].text}
               </p>
             </div>
             {(nextIndex >= 0 ? nextIndex : 0) + 1 < data.snippets.length && (
               <div className="lyric-row next">
-                <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
+                <p
+                  className="furigana preview-text"
+                  style={{ fontSize: furiganaSize }}
+                >
                   {data.snippets[(nextIndex >= 0 ? nextIndex : 0) + 1].furigana}
                 </p>
-                <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
+                <p
+                  className="lyric-text preview-text"
+                  style={{ fontSize: lyricSize }}
+                >
                   {data.snippets[(nextIndex >= 0 ? nextIndex : 0) + 1].text}
                 </p>
               </div>
@@ -747,21 +797,29 @@ export default function WatchPage() {
         {paused && !showSettings && (
           <div className="paused-overlay">
             {ended ? (
-              <button className="start-btn" onClick={() => {
-                playerRef.current?.seekTo(0, true);
-                playerRef.current?.playVideo();
-                currentIndexRef.current = -1;
-                pendingIndexRef.current = -1;
-                setCurrentIndex(-1);
-                matcherRef.current = null;
-                setMatcher(null);
-                setGapProgress(0);
-                setSongProgress(0);
-              }}>
+              <button
+                className="start-btn"
+                onClick={() => {
+                  playerRef.current?.seekTo(0, true);
+                  playerRef.current?.playVideo();
+                  currentIndexRef.current = -1;
+                  pendingIndexRef.current = -1;
+                  setCurrentIndex(-1);
+                  matcherRef.current = null;
+                  setMatcher(null);
+                  setGapProgress(0);
+                  setSongProgress(0);
+                }}
+              >
                 ▶ もう一度
               </button>
-            ) : hasStarted ? "一時停止中" : (
-              <button className="start-btn" onClick={() => playerRef.current?.playVideo()}>
+            ) : hasStarted ? (
+              "一時停止中"
+            ) : (
+              <button
+                className="start-btn"
+                onClick={() => playerRef.current?.playVideo()}
+              >
                 ▶ スタート (Space)
               </button>
             )}
@@ -784,7 +842,9 @@ export default function WatchPage() {
           searchResults={searchResults}
           searching={searching}
           applyingId={applyingId}
-          canClose={state.status === "success" && state.data.snippets.length > 0}
+          canClose={
+            state.status === "success" && state.data.snippets.length > 0
+          }
           onSearchTrackChange={setSearchTrack}
           onSearchArtistChange={setSearchArtist}
           onSearch={handleLyricsSearch}
