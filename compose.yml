@@ -1,0 +1,8 @@
+services:
+  youtype:
+    build: .
+    ports:
+      - "569:8000"
+    volumes:
+      - ./cache:/app/cache
+    restart: unless-stopped

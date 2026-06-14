@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+cache/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+*.md
+.env
+.env.*
+frontend/dist/
+main.py
