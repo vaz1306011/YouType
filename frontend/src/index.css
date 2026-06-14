@@ -147,19 +147,19 @@ code {
   min-height: 96px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px 16px;
   border-radius: 12px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
-  overflow: clip;
+  overflow: hidden;
 }
 
 .lyric-pair {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 16px;
   width: 100%;
 }
@@ -167,7 +167,7 @@ code {
 .lyric-row {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
 }
 
@@ -175,12 +175,14 @@ code {
   padding-top: 4px;
   border-top: 1px solid var(--border);
   width: 100%;
+  align-items: flex-start;
 }
 
 .furigana {
   font-size: 15px;
   letter-spacing: 0.1em;
   color: var(--text);
+  white-space: nowrap;
 }
 
 .lyric-text {
@@ -188,12 +190,35 @@ code {
   color: var(--text-h);
   font-weight: 500;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.lyric-scroll {
+  transition: transform 0.15s ease-out;
 }
 
 .lyric-placeholder {
   font-size: 28px;
   color: var(--text);
   opacity: 0.3;
+}
+
+.current-lyric {
+  position: relative;
+}
+.current-lyric.paused {
+  opacity: 0.4;
+}
+.paused-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
 }
 
 .typed {
@@ -310,6 +335,41 @@ code {
 .settings-panel input[type="range"] {
   width: 100%;
   accent-color: var(--accent);
+}
+
+.size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.size-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+.size-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.size-btn:hover {
+  background: var(--accent-bg);
+}
+.size-value {
+  width: 28px;
+  text-align: center;
+  font-size: 13px;
+  font-family: var(--mono);
+  color: var(--accent);
 }
 
 .toggle-row {

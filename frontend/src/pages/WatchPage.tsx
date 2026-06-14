@@ -77,8 +77,8 @@ export default function WatchPage() {
   const [matcher, setMatcher] = useState<MatchState | null>(null);
   const [practiceMode, setPracticeMode] = useLocalStorage("practiceMode", true);
   const [showSettings, setShowSettings] = useState(false);
-  const [lyricSize, setLyricSize] = useLocalStorage("lyricSize", 28);
-  const [furiganaSize, setFuriganaSize] = useLocalStorage("furiganaSize", 15);
+  const [lyricSize, setLyricSize] = useLocalStorage("lyricSize", 19);
+  const [furiganaSize, setFuriganaSize] = useLocalStorage("furiganaSize", 28);
   const [volume, setVolume] = useLocalStorage("volume", 100);
   const [showGapHint, setShowGapHint] = useState(false);
   const [nextIndex, setNextIndex] = useState(-1);
@@ -93,15 +93,22 @@ export default function WatchPage() {
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [showAutoChoice, setShowAutoChoice] = useState(false);
   const [applyingAutoCC, setApplyingAutoCC] = useState(false);
+  const [paused, setPaused] = useState(true);
 
   const playerRef = useRef<YT.Player | null>(null);
   const playerDivRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(-1);
   const practiceModeRef = useRef(true);
+  const pausedRef = useRef(true);
+  const practicePausedRef = useRef(false);
   const matcherRef = useRef<MatchState | null>(null);
   const pendingIndexRef = useRef(-1);
   const nextSnippetIndexRef = useRef(-1);
   const snippetsRef = useRef<Snippet[]>([]);
+  const typedRef = useRef<HTMLSpanElement>(null);
+  const furiganaRef = useRef<HTMLParagraphElement>(null);
+  const lyricContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollX, setScrollX] = useState(0);
 
   // Fetch transcript
   useEffect(() => {
@@ -238,8 +245,29 @@ export default function WatchPage() {
     practiceModeRef.current = practiceMode;
   }, [practiceMode]);
   useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+  useEffect(() => {
     if (state.status === "success") snippetsRef.current = state.data.snippets;
   }, [state]);
+
+  // Horizontal scroll to keep typed position visible
+  useEffect(() => {
+    if (!furiganaRef.current || !lyricContainerRef.current) {
+      setScrollX(0);
+      return;
+    }
+    const totalWidth = furiganaRef.current.scrollWidth;
+    const containerWidth = lyricContainerRef.current.clientWidth - 32;
+    const maxScroll = Math.max(0, totalWidth - containerWidth);
+    if (maxScroll === 0) {
+      setScrollX(0);
+      return;
+    }
+    const typedWidth = typedRef.current?.offsetWidth ?? 0;
+    const offset = Math.min(Math.max(0, typedWidth - containerWidth / 3), maxScroll);
+    setScrollX(offset);
+  }, [matcher, currentIndex]);
 
   // Settings open/close → pause/resume + volume
   const settingsWrapRef = useRef<HTMLDivElement>(null);
@@ -281,9 +309,15 @@ export default function WatchPage() {
     loadYouTubeApi().then(() => {
       playerRef.current = new window.YT.Player(playerDivRef.current!, {
         videoId,
-        playerVars: { rel: 0, modestbranding: 1 },
+        playerVars: { rel: 0, modestbranding: 1, controls: 0 },
         events: {
           onStateChange(e) {
+            if (e.data === window.YT.PlayerState.PLAYING) {
+              practicePausedRef.current = false;
+              setPaused(false);
+            } else if (e.data === window.YT.PlayerState.PAUSED) {
+              setPaused(!practicePausedRef.current);
+            }
             if (e.data === window.YT.PlayerState.BUFFERING) {
               const snips = snippetsRef.current;
               const t = e.target.getCurrentTime();
@@ -320,40 +354,37 @@ export default function WatchPage() {
               const t = player.getCurrentTime();
               const idx = snippets.findLastIndex((s) => s.start <= t);
 
-              const inGap =
-                idx < 0 || t > snippets[idx].start + snippets[idx].duration;
-              if (inGap) {
-                const nextIdx = idx + 1;
-                if (nextIdx < snippets.length) {
-                  const nextStart = snippets[nextIdx].start;
-                  const gapStart =
-                    idx >= 0 ? snippets[idx].start + snippets[idx].duration : 0;
-                  const progress =
-                    gapStart < nextStart
-                      ? Math.max(
-                          0,
-                          Math.min(1, (t - gapStart) / (nextStart - gapStart)),
-                        )
-                      : 1;
-                  setNextIndex(nextIdx);
-                  setGapProgress(progress);
-                  if (nextStart - t > 2) {
-                    nextSnippetIndexRef.current = nextIdx;
-                    setShowGapHint(true);
-                  } else {
-                    nextSnippetIndexRef.current = -1;
-                    setShowGapHint(false);
-                  }
-                } else {
-                  nextSnippetIndexRef.current = -1;
-                  setNextIndex(-1);
-                  setGapProgress(0);
-                  setShowGapHint(false);
-                }
+              // Progress bar: current lyric start → next lyric start
+              if (idx >= 0 && idx + 1 < snippets.length) {
+                const curStart = snippets[idx].start;
+                const nextStart = snippets[idx + 1].start;
+                const progress = nextStart > curStart
+                  ? Math.max(0, Math.min(1, (t - curStart) / (nextStart - curStart)))
+                  : 1;
+                setGapProgress(progress);
+                setNextIndex(idx + 1);
+              } else if (idx < 0 && snippets.length > 0) {
+                const nextStart = snippets[0].start;
+                const progress = nextStart > 0
+                  ? Math.max(0, Math.min(1, t / nextStart))
+                  : 1;
+                setGapProgress(progress);
+                setNextIndex(0);
+              } else {
+                setGapProgress(idx >= 0 ? 1 : 0);
+                setNextIndex(-1);
+              }
+
+              // Skip hint: typing done and next lyric >3s away
+              const inGap = idx < 0 || t > snippets[idx].start + snippets[idx].duration;
+              const typingDone = matcherRef.current !== null
+                && matcherRef.current.tokenIndex >= matcherRef.current.tokens.length;
+              const nextIdx2 = idx + 1;
+              if ((inGap || typingDone) && nextIdx2 < snippets.length && snippets[nextIdx2].start - t > 3) {
+                nextSnippetIndexRef.current = nextIdx2;
+                setShowGapHint(true);
               } else {
                 nextSnippetIndexRef.current = -1;
-                setNextIndex(-1);
-                setGapProgress(0);
                 setShowGapHint(false);
               }
 
@@ -374,6 +405,7 @@ export default function WatchPage() {
                   nextIdx < snippets.length &&
                   snippets[nextIdx].start - t <= 0.25
                 ) {
+                  practicePausedRef.current = true;
                   player.pauseVideo();
                   pendingIndexRef.current = nextIdx;
                 }
@@ -394,6 +426,7 @@ export default function WatchPage() {
                   currentIndexRef.current >= 0 &&
                   notDone
                 ) {
+                  practicePausedRef.current = true;
                   player.pauseVideo();
                   pendingIndexRef.current = idx;
                 } else {
@@ -420,34 +453,16 @@ export default function WatchPage() {
   // Keyboard input
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.key === " ") {
-      // Gap 中：跳到下一句
       if (nextSnippetIndexRef.current >= 0) {
         e.preventDefault();
-        const target =
-          snippetsRef.current[nextSnippetIndexRef.current].start - 2;
+        const target = snippetsRef.current[nextSnippetIndexRef.current].start - 3;
         playerRef.current?.seekTo(Math.max(0, target), true);
-        return;
-      }
-      // 當前歌詞打完：跳到下一句
-      const done =
-        matcherRef.current &&
-        matcherRef.current.tokenIndex >= matcherRef.current.tokens.length;
-      const nextIdx = currentIndexRef.current + 1;
-      if (done && nextIdx < snippetsRef.current.length) {
-        e.preventDefault();
-        const target = snippetsRef.current[nextIdx].start;
-        playerRef.current?.seekTo(Math.max(0, target - 0.2), true);
-        currentIndexRef.current = nextIdx;
-        pendingIndexRef.current = -1;
-        setCurrentIndex(nextIdx);
-        const newMatcher = createMatcher(snippetsRef.current[nextIdx].furigana);
-        matcherRef.current = newMatcher;
-        setMatcher(newMatcher);
         return;
       }
     }
 
     if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (pausedRef.current) return;
     const prev = matcherRef.current;
     if (!prev) return;
     const [next, result] = advance(prev, e.key);
@@ -565,26 +580,48 @@ export default function WatchPage() {
                 歌詞を変更する
               </button>
               <hr className="settings-divider" />
-              <label>
-                歌詞サイズ <span>{lyricSize}px</span>
-                <input
-                  type="range"
-                  min={16}
-                  max={56}
-                  value={lyricSize}
-                  onChange={(e) => setLyricSize(Number(e.target.value))}
-                />
-              </label>
-              <label>
-                ふりがなサイズ <span>{furiganaSize}px</span>
-                <input
-                  type="range"
-                  min={10}
-                  max={28}
-                  value={furiganaSize}
-                  onChange={(e) => setFuriganaSize(Number(e.target.value))}
-                />
-              </label>
+              <div className="size-control">
+                <span className="size-label">歌詞</span>
+                <button
+                  className="size-btn"
+                  onClick={() => setLyricSize((v) => Math.max(10, v - 1))}
+                >
+                  −
+                </button>
+                <span className="size-value">{lyricSize}</span>
+                <button
+                  className="size-btn"
+                  onClick={() => setLyricSize((v) => Math.min(28, v + 1))}
+                >
+                  +
+                </button>
+              </div>
+              <div className="size-control">
+                <span className="size-label">ふりがな</span>
+                <button
+                  className="size-btn"
+                  onClick={() => setFuriganaSize((v) => Math.max(18, v - 1))}
+                >
+                  −
+                </button>
+                <span className="size-value">{furiganaSize}</span>
+                <button
+                  className="size-btn"
+                  onClick={() => setFuriganaSize((v) => Math.min(38, v + 1))}
+                >
+                  +
+                </button>
+              </div>
+              <hr className="settings-divider" />
+              <button
+                className="lyrics-change-btn"
+                onClick={() => {
+                  setLyricSize(19);
+                  setFuriganaSize(28);
+                }}
+              >
+                サイズをリセット
+              </button>
             </div>
           )}
         </div>
@@ -594,7 +631,7 @@ export default function WatchPage() {
         <div ref={playerDivRef} />
       </div>
 
-      {nextIndex >= 0 && !current && !showSettings && (
+      {!showSettings && (
         <>
           <div className="gap-progress-wrap">
             <div
@@ -608,7 +645,10 @@ export default function WatchPage() {
         </>
       )}
 
-      <div className="current-lyric">
+      <div
+        className={`current-lyric${paused && !showSettings ? " paused" : ""}`}
+        ref={lyricContainerRef}
+      >
         {showSettings ? (
           <div className="lyric-row">
             <p className="furigana" style={{ fontSize: furiganaSize }}>
@@ -625,8 +665,8 @@ export default function WatchPage() {
         ) : current ? (
           <div key={currentIndex} className="lyric-pair lyric-slide">
             <div className="lyric-row">
-              <p className="furigana" style={{ fontSize: furiganaSize }}>
-                <span className="typed">
+              <p ref={furiganaRef} className="furigana lyric-scroll" style={{ fontSize: furiganaSize, transform: `translateX(-${scrollX}px)` }}>
+                <span className="typed" ref={typedRef}>
                   {current.furigana.slice(0, doneHLen)}
                 </span>
                 <span>{current.furigana.slice(doneHLen)}</span>
@@ -672,6 +712,9 @@ export default function WatchPage() {
           <div className="lyric-row">
             <p className="lyric-placeholder">♪</p>
           </div>
+        )}
+        {paused && !showSettings && (
+          <div className="paused-overlay">一時停止中</div>
         )}
       </div>
 
