@@ -44,7 +44,8 @@ out/
 .pnp.*
 
 # Lyrics cache
-cache/
+cache/*
+!cache/.gitkeep
 
 ### Python
 # Byte-compiled files
