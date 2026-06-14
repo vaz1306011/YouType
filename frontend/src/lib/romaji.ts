@@ -188,9 +188,9 @@ function buildCandidates(tokens: string[], idx: number): string[] {
   // っ の子音重複ショートカット
   if (token === "っ") {
     const next = tokens[idx + 1];
-    const nextRomaji = next ? (TABLE[next]?.[0] ?? "") : "";
-    const doubleList = nextRomaji[0] ? [`${nextRomaji[0]}`] : [];
-    return [...(TABLE[token] ?? []), ...doubleList];
+    const nextPatterns = next ? (TABLE[next] ?? []) : [];
+    const consonants = new Set(nextPatterns.map((r) => r[0]).filter(Boolean));
+    return [...(TABLE[token] ?? []), ...consonants];
   }
 
   // ん の n 1文字省略形
@@ -214,8 +214,9 @@ export function advance(
   const token = state.tokens[state.tokenIndex];
   if (token === "っ") {
     const next = state.tokens[state.tokenIndex + 1];
-    const nextRomaji = next ? (TABLE[next]?.[0] ?? "") : "";
-    if (key === nextRomaji[0] && state.typed === "") {
+    const nextPatterns = next ? (TABLE[next] ?? []) : [];
+    const consonants = new Set(nextPatterns.map((r) => r[0]).filter(Boolean));
+    if (consonants.has(key) && state.typed === "") {
       // 子音重複モード: っ を消費するだけ（次のキー入力で次トークンを処理）
       return [advanceToken({ ...state, typed: "" }), "ok"];
     }
