@@ -14,45 +14,9 @@ import {
   type MatchState,
 } from "../lib/romaji";
 import { useLocalStorage } from "../lib/useLocalStorage";
-
-interface Token {
-  surface: string;
-  reading: string;
-}
-
-interface Snippet {
-  text: string;
-  furigana: string;
-  tokens: Token[];
-  start: number;
-  duration: number;
-}
-
-interface VideoData {
-  video_id: string;
-  title: string | null;
-  artist: string | null;
-  snippets: Snippet[];
-  language: string | null;
-  is_generated: boolean | null;
-  source: string | null;
-  has_auto_cc: boolean;
-}
-
-interface LrclibResult {
-  id: number;
-  title: string;
-  artist: string;
-  album: string | null;
-  duration: number | null;
-  synced: boolean;
-}
-
-type State =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; data: VideoData }
-  | { status: "error"; message: string };
+import type { Snippet, LrclibResult, State } from "../types";
+import AutoChoiceModal from "../components/AutoChoiceModal";
+import LyricsSearchModal from "../components/LyricsSearchModal";
 
 const PREVIEW_TEXT = {
   text: "サンプル歌詞テキスト",
@@ -805,99 +769,27 @@ export default function WatchPage() {
       </div>
 
       {showAutoChoice && (
-        <div className="modal-overlay">
-          <div className="modal auto-choice-modal">
-            <h2 className="modal-title">字幕の選択</h2>
-            <p className="auto-choice-desc">
-              同期歌詞が見つかりませんでした。自動生成CC字幕が利用可能です。
-            </p>
-            <div className="auto-choice-buttons">
-              <button
-                className="auto-choice-btn primary"
-                onClick={handleApplyAutoCC}
-                disabled={applyingAutoCC}
-              >
-                {applyingAutoCC ? "適用中..." : "自動CC字幕を使う"}
-              </button>
-              <button
-                className="auto-choice-btn secondary"
-                onClick={handleChooseLrclib}
-                disabled={applyingAutoCC}
-              >
-                LRCLIBで手動検索
-              </button>
-            </div>
-          </div>
-        </div>
+        <AutoChoiceModal
+          applyingAutoCC={applyingAutoCC}
+          onApplyAutoCC={handleApplyAutoCC}
+          onChooseLrclib={handleChooseLrclib}
+        />
       )}
 
       {showLyricsModal && (
-        <div
-          className="modal-overlay"
-          onClick={(e) => {
-            if (
-              e.target === e.currentTarget &&
-              state.status === "success" &&
-              state.data.snippets.length > 0
-            )
-              setShowLyricsModal(false);
-          }}
-        >
-          <div className="modal">
-            <h2 className="modal-title">歌詞を検索</h2>
-            <div className="modal-fields">
-              <input
-                className="modal-input"
-                placeholder="曲名"
-                value={searchTrack}
-                onChange={(e) => setSearchTrack(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLyricsSearch()}
-              />
-              <input
-                className="modal-input"
-                placeholder="アーティスト（省略可）"
-                value={searchArtist}
-                onChange={(e) => setSearchArtist(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLyricsSearch()}
-              />
-              <button
-                className="modal-search-btn"
-                onClick={handleLyricsSearch}
-                disabled={searching}
-              >
-                {searching ? "検索中..." : "検索"}
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <ul className="modal-results">
-                {searchResults
-                  .filter((r) => r.synced)
-                  .map((r) => (
-                    <li
-                      key={r.id}
-                      className="modal-result"
-                      onClick={() =>
-                        applyingId === null && handleApplyLyrics(r)
-                      }
-                    >
-                      <span className="result-title">{r.title}</span>
-                      <span className="result-artist">
-                        {r.artist}
-                        {r.album ? ` — ${r.album}` : ""}
-                        {r.duration != null && ` (${Math.floor(r.duration / 60)}:${String(Math.floor(r.duration % 60)).padStart(2, "0")})`}
-                      </span>
-                      {applyingId === r.id && (
-                        <span className="result-applying">適用中...</span>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            )}
-            {searchResults.length === 0 && !searching && searchTrack && (
-              <p className="modal-empty">結果がありません</p>
-            )}
-          </div>
-        </div>
+        <LyricsSearchModal
+          searchTrack={searchTrack}
+          searchArtist={searchArtist}
+          searchResults={searchResults}
+          searching={searching}
+          applyingId={applyingId}
+          canClose={state.status === "success" && state.data.snippets.length > 0}
+          onSearchTrackChange={setSearchTrack}
+          onSearchArtistChange={setSearchArtist}
+          onSearch={handleLyricsSearch}
+          onApply={handleApplyLyrics}
+          onClose={() => setShowLyricsModal(false)}
+        />
       )}
     </main>
   );
