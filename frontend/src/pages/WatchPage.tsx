@@ -17,6 +17,7 @@ import { useLocalStorage } from "../lib/useLocalStorage";
 import type { Snippet, LrclibResult, State } from "../types";
 import AutoChoiceModal from "../components/AutoChoiceModal";
 import LyricsSearchModal from "../components/LyricsSearchModal";
+import "./WatchPage.css";
 
 const PREVIEW_TEXT = {
   text: "サンプル歌詞テキスト",
