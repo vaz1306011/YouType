@@ -79,7 +79,7 @@ export default function WatchPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [lyricSize, setLyricSize] = useLocalStorage("lyricSize", 19);
   const [furiganaSize, setFuriganaSize] = useLocalStorage("furiganaSize", 28);
-  const [volume, setVolume] = useLocalStorage("volume", 100);
+  const [volume, setVolume] = useLocalStorage("volume", 50);
   const [showGapHint, setShowGapHint] = useState(false);
   const [nextIndex, setNextIndex] = useState(-1);
   const [gapProgress, setGapProgress] = useState(0);
