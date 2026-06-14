@@ -808,6 +808,7 @@ export default function WatchPage() {
                       <span className="result-artist">
                         {r.artist}
                         {r.album ? ` — ${r.album}` : ""}
+                        {r.duration != null && ` (${Math.floor(r.duration / 60)}:${String(Math.floor(r.duration % 60)).padStart(2, "0")})`}
                       </span>
                       {applyingId === r.id && (
                         <span className="result-applying">適用中...</span>
