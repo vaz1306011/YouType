@@ -1,3 +1,5 @@
+declare global { interface Window { onYouTubeIframeAPIReady?: () => void } }
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { advance, createMatcher, doneHiraganaLength, doneSurfaceLength, type MatchState } from '../lib/romaji'

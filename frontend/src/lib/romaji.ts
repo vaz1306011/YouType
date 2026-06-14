@@ -92,8 +92,6 @@ function buildCandidates(tokens: string[], idx: number): string[] {
   if (token === 'っ') {
     const next = tokens[idx + 1]
     const nextRomaji = next ? (TABLE[next]?.[0] ?? '') : ''
-    const doubles = nextRomaji[0] ? [nextRomaji[0] + nextRomaji[0].slice(0)] : []
-    // 「っ」+ 次の子音重複: 次のトークンの先頭子音を重ねる
     const doubleList = nextRomaji[0] ? [`${nextRomaji[0]}`] : []
     return [...(TABLE[token] ?? []), ...doubleList]
   }
