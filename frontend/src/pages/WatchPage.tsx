@@ -98,6 +98,8 @@ export default function WatchPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const hasStartedRef = useRef(false);
   const [ended, setEnded] = useState(false);
+  const [exitingIndex, setExitingIndex] = useState(-1);
+  const [exitingScrollX, setExitingScrollX] = useState(0);
 
   const playerRef = useRef<YT.Player | null>(null);
   const playerDivRef = useRef<HTMLDivElement>(null);
@@ -113,6 +115,8 @@ export default function WatchPage() {
   const furiganaRef = useRef<HTMLParagraphElement>(null);
   const lyricContainerRef = useRef<HTMLDivElement>(null);
   const [scrollX, setScrollX] = useState(0);
+  const prevIndexRef = useRef(-1);
+  const [scrollTransition, setScrollTransition] = useState(true);
 
   // Fetch transcript
   useEffect(() => {
@@ -260,6 +264,21 @@ export default function WatchPage() {
 
   // Horizontal scroll to keep typed position visible
   useEffect(() => {
+    if (currentIndex !== prevIndexRef.current) {
+      const prev = prevIndexRef.current;
+      prevIndexRef.current = currentIndex;
+      if (prev >= 0 && currentIndex > prev) {
+        setExitingScrollX(scrollX);
+        setExitingIndex(prev);
+        setTimeout(() => setExitingIndex(-1), 400);
+      }
+      setScrollTransition(false);
+      setScrollX(0);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setScrollTransition(true));
+      });
+      return;
+    }
     if (!furiganaRef.current || !lyricContainerRef.current) {
       setScrollX(0);
       return;
@@ -652,11 +671,16 @@ export default function WatchPage() {
 
       {!showSettings && (
         <>
-          <div className="gap-progress-wrap">
-            <div
-              className="gap-progress-bar"
-              style={{ width: `${gapProgress * 100}%` }}
-            />
+          <div className="progress-group">
+            <div className="gap-progress-wrap">
+              <div
+                className="gap-progress-bar"
+                style={{ width: `${gapProgress * 100}%` }}
+              />
+            </div>
+            {showGapHint && (
+              <span className="gap-hint">Space: スキップ</span>
+            )}
           </div>
           <div className="song-progress-wrap">
             <div
@@ -664,10 +688,7 @@ export default function WatchPage() {
               style={{ width: `${songProgress * 100}%` }}
             />
           </div>
-          {showGapHint && (
-            <p className="gap-hint">スペースキーで次の歌詞へスキップ</p>
-          )}
-        </>
+</>
       )}
 
       <div
@@ -688,9 +709,22 @@ export default function WatchPage() {
             </p>
           </div>
         ) : current ? (
-          <div key={currentIndex} className="lyric-pair lyric-slide">
+          <>
+          {exitingIndex >= 0 && data.snippets[exitingIndex] && (
+            <div className="lyric-pair lyric-exit">
+              <div className="lyric-row">
+                <p className="furigana" style={{ fontSize: furiganaSize, transform: `translateX(-${exitingScrollX}px)` }}>
+                  <span className="typed">{data.snippets[exitingIndex].furigana}</span>
+                </p>
+                <p className="lyric-text" style={{ fontSize: lyricSize }}>
+                  <span className="typed">{data.snippets[exitingIndex].text}</span>
+                </p>
+              </div>
+            </div>
+          )}
+          <div key={currentIndex} className={`lyric-pair${currentIndex > 0 ? " lyric-slide" : ""}`}>
             <div className="lyric-row">
-              <p ref={furiganaRef} className="furigana lyric-scroll" style={{ fontSize: furiganaSize, transform: `translateX(-${scrollX}px)` }}>
+              <p ref={furiganaRef} className={`furigana${scrollTransition ? " lyric-scroll" : ""}`} style={{ fontSize: furiganaSize, transform: `translateX(-${scrollX}px)` }}>
                 <span className="typed" ref={typedRef}>
                   {current.furigana.slice(0, doneHLen)}
                 </span>
@@ -718,20 +752,27 @@ export default function WatchPage() {
               </div>
             )}
           </div>
-        ) : nextIndex >= 0 ? (
-          <div className="lyric-row">
-            <p
-              className="furigana preview-text"
-              style={{ fontSize: furiganaSize }}
-            >
-              {data.snippets[nextIndex].furigana}
-            </p>
-            <p
-              className="lyric-text preview-text"
-              style={{ fontSize: lyricSize }}
-            >
-              {data.snippets[nextIndex].text}
-            </p>
+          </>
+        ) : data.snippets.length > 0 ? (
+          <div className="lyric-pair">
+            <div className="lyric-row">
+              <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
+                {data.snippets[nextIndex >= 0 ? nextIndex : 0].furigana}
+              </p>
+              <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
+                {data.snippets[nextIndex >= 0 ? nextIndex : 0].text}
+              </p>
+            </div>
+            {(nextIndex >= 0 ? nextIndex : 0) + 1 < data.snippets.length && (
+              <div className="lyric-row next">
+                <p className="furigana preview-text" style={{ fontSize: furiganaSize }}>
+                  {data.snippets[(nextIndex >= 0 ? nextIndex : 0) + 1].furigana}
+                </p>
+                <p className="lyric-text preview-text" style={{ fontSize: lyricSize }}>
+                  {data.snippets[(nextIndex >= 0 ? nextIndex : 0) + 1].text}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="lyric-row">
