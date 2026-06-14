@@ -5,13 +5,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.logging_config import setup_logging
-from backend.routers import search, transcript
+from backend.routers import transcript
 
 setup_logging()
 
 app = FastAPI()
 
-app.include_router(search.router)
 app.include_router(transcript.router)
 
 _static_dir = Path(__file__).parent.parent / "static"
