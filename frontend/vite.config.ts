@@ -9,6 +9,7 @@ export default defineConfig({
       '/transcript': 'http://localhost:8000',
       '/search_lyrics': 'http://localhost:8000',
       '/apply_lyrics': 'http://localhost:8000',
+      '/apply_auto_cc': 'http://localhost:8000',
     },
   },
 })

@@ -16,7 +16,7 @@ _CACHE_DIR = Path(__file__).parent.parent.parent / "cache"
 _CACHE_DIR.mkdir(exist_ok=True)
 
 _CACHE_TTL = int(os.getenv("CACHE_TTL_DAYS", "30")) * 86400
-_CACHE_VERSION = 2  # 変更したら古いキャッシュを自動破棄
+_CACHE_VERSION = 3  # 変更したら古いキャッシュを自動破棄
 
 
 def _cache_path(video_id: str) -> Path:
@@ -72,6 +72,16 @@ def get_apply_lyrics(
             title=title or None,
             artist=artist or None,
         )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _save_cache(video)
+    return video
+
+
+@router.get("/apply_auto_cc")
+def get_apply_auto_cc(video_id: str) -> Video:
+    try:
+        video = Video.from_auto_cc(video_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     _save_cache(video)

@@ -35,6 +35,8 @@ interface VideoData {
   snippets: Snippet[];
   language: string | null;
   is_generated: boolean | null;
+  source: string | null;
+  has_auto_cc: boolean;
 }
 
 interface LrclibResult {
@@ -89,6 +91,8 @@ export default function WatchPage() {
   const [searchResults, setSearchResults] = useState<LrclibResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [applyingId, setApplyingId] = useState<number | null>(null);
+  const [showAutoChoice, setShowAutoChoice] = useState(false);
+  const [applyingAutoCC, setApplyingAutoCC] = useState(false);
 
   const playerRef = useRef<YT.Player | null>(null);
   const playerDivRef = useRef<HTMLDivElement>(null);
@@ -123,13 +127,17 @@ export default function WatchPage() {
       );
   }, [videoId]);
 
-  // Auto-open lyrics modal when no snippets found
+  // Auto-open modal when no snippets found
   useEffect(() => {
     if (state.status === "success" && state.data.snippets.length === 0) {
-      setSearchTrack(state.data.title ?? "");
-      setSearchArtist(state.data.artist ?? "");
-      setSearchResults([]);
-      setShowLyricsModal(true);
+      if (state.data.has_auto_cc) {
+        setShowAutoChoice(true);
+      } else {
+        setSearchTrack(state.data.title ?? "");
+        setSearchArtist(state.data.artist ?? "");
+        setSearchResults([]);
+        setShowLyricsModal(true);
+      }
     }
   }, [state.status]);
 
@@ -184,6 +192,34 @@ export default function WatchPage() {
     },
     [videoId, applyingId],
   );
+
+  const handleApplyAutoCC = useCallback(async () => {
+    if (!videoId || applyingAutoCC) return;
+    setApplyingAutoCC(true);
+    try {
+      const res = await fetch(`/apply_auto_cc?video_id=${encodeURIComponent(videoId)}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as VideoData;
+      setState({ status: "success", data });
+      setCurrentIndex(-1);
+      currentIndexRef.current = -1;
+      matcherRef.current = null;
+      setMatcher(null);
+      setShowAutoChoice(false);
+    } finally {
+      setApplyingAutoCC(false);
+    }
+  }, [videoId, applyingAutoCC]);
+
+  const handleChooseLrclib = useCallback(() => {
+    setShowAutoChoice(false);
+    if (state.status === "success") {
+      setSearchTrack(state.data.title ?? "");
+      setSearchArtist(state.data.artist ?? "");
+      setSearchResults([]);
+    }
+    setShowLyricsModal(true);
+  }, [state]);
 
   // Update page title
   useEffect(() => {
@@ -477,6 +513,11 @@ export default function WatchPage() {
       <header className="watch-header">
         <h1>{data.title ?? videoId}</h1>
         {data.artist && <p className="artist">{data.artist}</p>}
+        {data.source && (
+          <span className={`source-badge source-${data.source}`}>
+            {data.source === "lrclib" ? "LRCLIB" : data.source === "youtube" ? "CC字幕" : "自動CC字幕"}
+          </span>
+        )}
       </header>
 
       <div className="toolbar">
@@ -627,6 +668,25 @@ export default function WatchPage() {
           </div>
         )}
       </div>
+
+      {showAutoChoice && (
+        <div className="modal-overlay">
+          <div className="modal auto-choice-modal">
+            <h2 className="modal-title">字幕の選択</h2>
+            <p className="auto-choice-desc">
+              同期歌詞が見つかりませんでした。自動生成CC字幕が利用可能です。
+            </p>
+            <div className="auto-choice-buttons">
+              <button className="auto-choice-btn primary" onClick={handleApplyAutoCC} disabled={applyingAutoCC}>
+                {applyingAutoCC ? "適用中..." : "自動CC字幕を使う"}
+              </button>
+              <button className="auto-choice-btn secondary" onClick={handleChooseLrclib} disabled={applyingAutoCC}>
+                LRCLIBで手動検索
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showLyricsModal && (
         <div

@@ -98,6 +98,8 @@ class Video:
     snippets: list[dict] = field(default_factory=list)
     language: Optional[str] = None
     is_generated: Optional[bool] = None
+    source: Optional[str] = None
+    has_auto_cc: bool = False
 
     @classmethod
     def from_id(
@@ -112,10 +114,26 @@ class Video:
             logger.warning(f"[{video_id}] yt_dlpからの情報の取得に失敗しました: {e}")
             return cls(video_id=video_id, title=None, artist=None)
 
+        # 1. LRCLIB
         try:
             return cls._from_lrclib(video_id, track_name, artist_name)
         except Exception:
-            return cls._from_youtube(video_id, track_name, artist_name)
+            pass
+
+        # 2. YouTube 手動CC字幕
+        try:
+            return cls._from_youtube_manual(video_id, track_name, artist_name)
+        except Exception:
+            pass
+
+        # 3. 自動生成CC字幕の有無を確認
+        has_auto = cls._has_auto_cc(video_id)
+        return cls(
+            video_id=video_id,
+            title=track_name,
+            artist=artist_name,
+            has_auto_cc=has_auto,
+        )
 
     @classmethod
     def from_lrclib_id(
@@ -149,6 +167,7 @@ class Video:
             artist=artist or match.artist_name,
             snippets=snippets,
             language="ja",
+            source="lrclib",
         )
 
     @classmethod
@@ -202,57 +221,82 @@ class Video:
             artist=artist,
             snippets=snippets,
             language="ja",
+            source="lrclib",
         )
 
     @classmethod
-    def _from_youtube(
+    def _from_youtube_manual(
         cls, video_id: str, track_name: str, artist: Optional[str]
     ) -> "Video":
-        logger.debug(f"[{video_id}] YouTube Transcript API で字幕を検索します")
+        logger.debug(f"[{video_id}] YouTube 手動CC字幕を検索します")
         ytt_api = YouTubeTranscriptApi()
-        try:
-            transcript_list = ytt_api.list(video_id)
+        transcript_list = ytt_api.list(video_id)
+        transcript = transcript_list.find_manually_created_transcript(
+            cls.DEFAULT_LANGUAGES
+        )
+        return cls._build_from_transcript(
+            video_id, track_name, artist, transcript, source="youtube"
+        )
 
+    @classmethod
+    def from_auto_cc(
+        cls, video_id: str, track_name: Optional[str] = None, artist: Optional[str] = None
+    ) -> "Video":
+        logger.debug(f"[{video_id}] YouTube 自動生成CC字幕を取得します")
+        if not track_name:
             try:
-                transcript = transcript_list.find_manually_created_transcript(
-                    cls.DEFAULT_LANGUAGES
-                )
-            except NoTranscriptFound:
-                transcript = transcript_list.find_generated_transcript(
-                    cls.FALLBACK_GENERATED_LANGUAGES
-                )
+                track_name, artist = _fetch_youtube_music_info(video_id)
+            except Exception:
+                track_name = ""
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.list(video_id)
+        transcript = transcript_list.find_generated_transcript(
+            cls.FALLBACK_GENERATED_LANGUAGES
+        )
+        return cls._build_from_transcript(
+            video_id, track_name, artist, transcript, source="youtube_generated"
+        )
 
-            fetched = transcript.fetch()
-            raw = fetched.to_raw_data()
-            snippets = []
-            for s in raw:
-                clean = _strip_punct(s["text"])
-                tokens = _furigana_tokens(clean)
-                snippets.append(
-                    {
-                        **s,
-                        "text": clean,
-                        "furigana": "".join(t["reading"] for t in tokens),
-                        "tokens": tokens,
-                    }
-                )
-            return cls(
-                video_id=video_id,
-                title=track_name,
-                artist=artist,
-                snippets=snippets,
-                language=fetched.language,
-                is_generated=fetched.is_generated,
+    @classmethod
+    def _build_from_transcript(
+        cls, video_id: str, track_name: str, artist: Optional[str],
+        transcript: Any, source: str,
+    ) -> "Video":
+        fetched = transcript.fetch()
+        raw = fetched.to_raw_data()
+        snippets = []
+        for s in raw:
+            clean = _strip_punct(s["text"])
+            tokens = _furigana_tokens(clean)
+            snippets.append(
+                {
+                    **s,
+                    "text": clean,
+                    "furigana": "".join(t["reading"] for t in tokens),
+                    "tokens": tokens,
+                }
             )
+        return cls(
+            video_id=video_id,
+            title=track_name,
+            artist=artist,
+            snippets=snippets,
+            language=fetched.language,
+            is_generated=fetched.is_generated,
+            source=source,
+        )
 
-        except TranscriptsDisabled:
-            logger.warning(f"[{video_id}] この動画は字幕が無効です。")
-            return cls(video_id=video_id, title=track_name, artist=artist)
-        except NoTranscriptFound:
-            logger.warning(
-                f"[{video_id}] 使用可能な字幕が見つかりませんでした（ja/en 手動・ja 自動生成）。"
+    @classmethod
+    def _has_auto_cc(cls, video_id: str) -> bool:
+        try:
+            ytt_api = YouTubeTranscriptApi()
+            transcript_list = ytt_api.list(video_id)
+            transcript_list.find_generated_transcript(
+                cls.FALLBACK_GENERATED_LANGUAGES
             )
-            return cls(video_id=video_id, title=track_name, artist=artist)
+            return True
+        except Exception:
+            return False
 
 
 _LRC_TIME = re.compile(r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]")
