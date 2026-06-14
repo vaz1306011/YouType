@@ -274,13 +274,11 @@ export default function WatchPage() {
   const settingsWrapRef = useRef<HTMLDivElement>(null);
 
   const openSettings = useCallback(() => {
-    playerRef.current?.pauseVideo();
     setShowSettings(true);
   }, []);
 
   const closeSettings = useCallback(() => {
     setShowSettings(false);
-    playerRef.current?.playVideo();
   }, []);
 
   useEffect(() => {
