@@ -269,6 +269,8 @@ class Video:
         raw = fetched.to_raw_data()
         snippets = []
         for s in raw:
+            if s["text"].startswith("[") and s["text"].endswith("]"):
+                continue
             clean = _strip_punct(s["text"])
             tokens = _furigana_tokens(clean)
             snippets.append(
