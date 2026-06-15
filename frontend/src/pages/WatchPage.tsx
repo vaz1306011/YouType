@@ -392,12 +392,16 @@ export default function WatchPage() {
                 matcherRef.current.tokenIndex >=
                   matcherRef.current.tokens.length;
               const nextIdx2 = idx + 1;
+              const lastDone =
+                typingDone && idx === snippets.length - 1;
               if (
                 (inGap || typingDone) &&
                 nextIdx2 < snippets.length &&
                 snippets[nextIdx2].start - t > 3
               ) {
                 nextSnippetIndexRef.current = nextIdx2;
+                setShowGapHint(true);
+              } else if (lastDone) {
                 setShowGapHint(true);
               } else {
                 nextSnippetIndexRef.current = -1;
@@ -478,6 +482,17 @@ export default function WatchPage() {
         const target =
           snippetsRef.current[nextSnippetIndexRef.current].start - 3;
         playerRef.current?.seekTo(Math.max(0, target), true);
+        return;
+      }
+      const m = matcherRef.current;
+      const snippets = snippetsRef.current;
+      if (
+        m &&
+        m.tokenIndex >= m.tokens.length &&
+        currentIndexRef.current === snippets.length - 1
+      ) {
+        const duration = playerRef.current?.getDuration();
+        if (duration) playerRef.current?.seekTo(duration, true);
         return;
       }
     }
@@ -673,7 +688,7 @@ export default function WatchPage() {
       )}
 
       <div
-        className={`current-lyric${paused && hasStarted && !showSettings ? " paused" : ""}`}
+        className={`current-lyric${paused && hasStarted && !ended && !showSettings ? " paused" : ""}`}
         ref={lyricContainerRef}
       >
         {showSettings ? (
