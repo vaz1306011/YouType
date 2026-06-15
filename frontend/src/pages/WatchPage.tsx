@@ -392,8 +392,7 @@ export default function WatchPage() {
                 matcherRef.current.tokenIndex >=
                   matcherRef.current.tokens.length;
               const nextIdx2 = idx + 1;
-              const lastDone =
-                typingDone && idx === snippets.length - 1;
+              const lastDone = typingDone && idx === snippets.length - 1;
               if (
                 (inGap || typingDone) &&
                 nextIdx2 < snippets.length &&
@@ -552,9 +551,14 @@ export default function WatchPage() {
 
   const { data } = state;
   const current = currentIndex >= 0 ? data.snippets[currentIndex] : null;
-  const doneHLen = current && matcher ? doneHiraganaLength(matcher) : 0;
+  const doneTokenLen =
+    current && matcher
+      ? matcher.tokens.slice(0, matcher.doneChars).join("").length
+      : 0;
+  const doneHLen =
+    current && matcher ? doneHiraganaLength(matcher, current.furigana) : 0;
   const doneSLen =
-    current && matcher ? doneSurfaceLength(current.tokens, doneHLen) : 0;
+    current && matcher ? doneSurfaceLength(current.tokens, doneTokenLen) : 0;
 
   const previewFurigana = PREVIEW_TEXT.furigana;
   const previewText = PREVIEW_TEXT.text;
@@ -591,75 +595,73 @@ export default function WatchPage() {
           />
         </div>
 
-        {/* 右：設定ギア */}
-        <div className="settings-wrap" ref={settingsWrapRef}>
+        {/* 右：練習モード + 設定ギア */}
+        <div className="toolbar-right">
           <button
-            className={`settings-btn${showSettings ? " on" : ""}`}
-            onClick={() => (showSettings ? closeSettings() : openSettings())}
-            aria-label="設定"
+            className={`toggle-btn${practiceMode ? " on" : ""}`}
+            onClick={() => setPracticeMode((v) => !v)}
           >
-            ⚙
+            練習 {practiceMode ? "ON" : "OFF"}
           </button>
-          {showSettings && (
-            <div className="settings-panel">
-              <label className="toggle-row">
-                練習モード
-                <button
-                  className={`toggle-btn${practiceMode ? " on" : ""}`}
-                  onClick={() => setPracticeMode((v) => !v)}
-                >
-                  {practiceMode ? "ON" : "OFF"}
+          <div className="settings-wrap" ref={settingsWrapRef}>
+            <button
+              className={`settings-btn${showSettings ? " on" : ""}`}
+              onClick={() => (showSettings ? closeSettings() : openSettings())}
+              aria-label="設定"
+            >
+              ⚙
+            </button>
+            {showSettings && (
+              <div className="settings-panel">
+                <button className="lyrics-change-btn" onClick={openLyricsModal}>
+                  歌詞を変更する
                 </button>
-              </label>
-              <hr className="settings-divider" />
-              <button className="lyrics-change-btn" onClick={openLyricsModal}>
-                歌詞を変更する
-              </button>
-              <hr className="settings-divider" />
-              <div className="size-control">
-                <span className="size-label">歌詞</span>
+                <hr className="settings-divider" />
+                <div className="size-control">
+                  <span className="size-label">歌詞</span>
+                  <button
+                    className="size-btn"
+                    onClick={() => setLyricSize((v) => Math.max(10, v - 1))}
+                  >
+                    −
+                  </button>
+                  <span className="size-value">{lyricSize}</span>
+                  <button
+                    className="size-btn"
+                    onClick={() => setLyricSize((v) => Math.min(28, v + 1))}
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="size-control">
+                  <span className="size-label">ふりがな</span>
+                  <button
+                    className="size-btn"
+                    onClick={() => setFuriganaSize((v) => Math.max(18, v - 1))}
+                  >
+                    −
+                  </button>
+                  <span className="size-value">{furiganaSize}</span>
+                  <button
+                    className="size-btn"
+                    onClick={() => setFuriganaSize((v) => Math.min(38, v + 1))}
+                  >
+                    +
+                  </button>
+                </div>
+                <hr className="settings-divider" />
                 <button
-                  className="size-btn"
-                  onClick={() => setLyricSize((v) => Math.max(10, v - 1))}
+                  className="lyrics-change-btn"
+                  onClick={() => {
+                    setLyricSize(19);
+                    setFuriganaSize(28);
+                  }}
                 >
-                  −
-                </button>
-                <span className="size-value">{lyricSize}</span>
-                <button
-                  className="size-btn"
-                  onClick={() => setLyricSize((v) => Math.min(28, v + 1))}
-                >
-                  +
+                  サイズをリセット
                 </button>
               </div>
-              <div className="size-control">
-                <span className="size-label">ふりがな</span>
-                <button
-                  className="size-btn"
-                  onClick={() => setFuriganaSize((v) => Math.max(18, v - 1))}
-                >
-                  −
-                </button>
-                <span className="size-value">{furiganaSize}</span>
-                <button
-                  className="size-btn"
-                  onClick={() => setFuriganaSize((v) => Math.min(38, v + 1))}
-                >
-                  +
-                </button>
-              </div>
-              <hr className="settings-divider" />
-              <button
-                className="lyrics-change-btn"
-                onClick={() => {
-                  setLyricSize(19);
-                  setFuriganaSize(28);
-                }}
-              >
-                サイズをリセット
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
