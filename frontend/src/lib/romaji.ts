@@ -203,7 +203,7 @@ function buildCandidates(tokens: string[], idx: number): string[] {
     return canUseN(tokens, idx) ? [...base, "n"] : base;
   }
 
-  return TABLE[token] ?? [token];
+  return TABLE[token] ?? [token.toLowerCase()];
 }
 
 export type AdvanceResult = "ok" | "wrong" | "complete";
@@ -212,7 +212,8 @@ export function advance(
   state: MatchState,
   key: string,
 ): [MatchState, AdvanceResult] {
-  const newTyped = state.typed + key;
+  const lkey = key.toLowerCase();
+  const newTyped = state.typed + lkey;
 
   // っ の子音重複処理: 次のトークンの先頭子音と一致するか
   const token = state.tokens[state.tokenIndex];
