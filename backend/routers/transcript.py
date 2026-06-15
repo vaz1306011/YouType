@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from backend.models import Video, search_lrclib
 
@@ -61,16 +62,23 @@ def get_search_lyrics(track: str, artist: str = "") -> list[dict]:
         raise HTTPException(status_code=502, detail=str(e))
 
 
-@router.get("/apply_lyrics")
-def get_apply_lyrics(
-    video_id: str, lrclib_id: int, title: str = "", artist: str = ""
-) -> Video:
+class ApplyLyricsRequest(BaseModel):
+    video_id: str
+    synced_lyrics: str
+    title: str = ""
+    artist: str = ""
+    duration: float | None = None
+
+
+@router.post("/apply_lyrics")
+def post_apply_lyrics(body: ApplyLyricsRequest) -> Video:
     try:
-        video = Video.from_lrclib_id(
-            video_id,
-            lrclib_id,
-            title=title or None,
-            artist=artist or None,
+        video = Video.from_synced_lyrics(
+            video_id=body.video_id,
+            synced_lyrics=body.synced_lyrics,
+            title=body.title or None,
+            artist=body.artist or None,
+            duration=body.duration,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

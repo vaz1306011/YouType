@@ -114,7 +114,7 @@ export default function WatchPage() {
         setShowAutoChoice(true);
       } else {
         setSearchTrack(state.data.title ?? "");
-        setSearchArtist(state.data.artist ?? "");
+        setSearchArtist("");
         setSearchResults([]);
         setShowLyricsModal(true);
       }
@@ -124,7 +124,7 @@ export default function WatchPage() {
   const openLyricsModal = useCallback(() => {
     if (state.status === "success") {
       setSearchTrack(state.data.title ?? "");
-      setSearchArtist(state.data.artist ?? "");
+      setSearchArtist("");
       setSearchResults([]);
     }
     playerRef.current?.pauseVideo();
@@ -151,13 +151,17 @@ export default function WatchPage() {
       if (!videoId || applyingId !== null) return;
       setApplyingId(result.id);
       try {
-        const params = new URLSearchParams({
-          video_id: videoId,
-          lrclib_id: String(result.id),
-          title: result.title,
-          artist: result.artist,
+        const res = await fetch("/apply_lyrics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            video_id: videoId,
+            synced_lyrics: result.synced_lyrics,
+            title: result.title,
+            artist: result.artist,
+            duration: result.duration,
+          }),
         });
-        const res = await fetch(`/apply_lyrics?${params}`);
         if (!res.ok) return;
         const data = (await res.json()) as VideoData;
         setState({ status: "success", data });
@@ -197,7 +201,7 @@ export default function WatchPage() {
     setShowAutoChoice(false);
     if (state.status === "success") {
       setSearchTrack(state.data.title ?? "");
-      setSearchArtist(state.data.artist ?? "");
+      setSearchArtist("");
       setSearchResults([]);
     }
     setShowLyricsModal(true);

@@ -29,6 +29,8 @@ export interface LrclibResult {
   album: string | null;
   duration: number | null;
   synced: boolean;
+  synced_lyrics: string | null;
+  preview: string[];
 }
 
 export type State =

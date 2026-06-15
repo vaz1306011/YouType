@@ -65,7 +65,11 @@ _ALPHA = re.compile(r"[a-zA-Z]")
 def _join_readings(tokens: list[dict]) -> str:
     parts: list[str] = []
     for i, t in enumerate(tokens):
-        if i > 0 and _ALPHA.match(t["reading"]) and _ALPHA.match(tokens[i - 1]["reading"][-1:]):
+        if (
+            i > 0
+            and _ALPHA.match(t["reading"])
+            and _ALPHA.match(tokens[i - 1]["reading"][-1:])
+        ):
             parts.append(" ")
         parts.append(t["reading"])
     return "".join(parts)
@@ -73,6 +77,18 @@ def _join_readings(tokens: list[dict]) -> str:
 
 def _furigana(text: str) -> str:
     return _join_readings(_furigana_tokens(text))
+
+
+def _preview_lines(synced: str | None, plain: str | None, n: int = 3) -> list[str]:
+    text = synced or plain or ""
+    lines: list[str] = []
+    for line in text.splitlines():
+        clean = _LRC_TIME.sub("", line).strip() if synced else line.strip()
+        if clean:
+            lines.append(clean)
+        if len(lines) >= n:
+            break
+    return lines
 
 
 def search_lrclib(track: str, artist: str) -> list[dict]:
@@ -86,6 +102,8 @@ def search_lrclib(track: str, artist: str) -> list[dict]:
             "album": r.album_name,
             "duration": r.duration,
             "synced": bool(r.synced_lyrics),
+            "synced_lyrics": r.synced_lyrics,
+            "preview": _preview_lines(r.synced_lyrics, r.plain_lyrics),
         }
         for r in results
     ]
@@ -116,15 +134,16 @@ class Video:
     ) -> "Video":
         track_name: str = ""
         artist_name: Optional[str] = None
+        album_name: Optional[str] = None
         try:
-            track_name, artist_name = _fetch_youtube_music_info(video_id)
+            track_name, artist_name, album_name = _fetch_youtube_music_info(video_id)
         except Exception as e:
             logger.warning(f"[{video_id}] yt_dlpからの情報の取得に失敗しました: {e}")
             return cls(video_id=video_id, title=None, artist=None)
 
         # 1. LRCLIB
         try:
-            return cls._from_lrclib(video_id, track_name, artist_name)
+            return cls._from_lrclib(video_id, track_name, artist_name, album_name)
         except Exception:
             pass
 
@@ -144,19 +163,16 @@ class Video:
         )
 
     @classmethod
-    def from_lrclib_id(
+    def from_synced_lyrics(
         cls,
         video_id: str,
-        lrclib_id: int,
+        synced_lyrics: str,
         title: Optional[str] = None,
         artist: Optional[str] = None,
+        duration: Optional[float] = None,
     ) -> "Video":
-        api = LrcLibAPI(user_agent="youtype/0.1.0")
-        match = api.get_lyrics_by_id(lrclib_id)
-        if not match or not match.synced_lyrics:
-            raise ValueError(f"lrclib id={lrclib_id} に同期歌詞がありません")
         snippets = []
-        for s in _parse_lrc(match.synced_lyrics, song_length=match.duration):
+        for s in _parse_lrc(synced_lyrics, song_length=duration):
             if not _JAPANESE.search(s["text"]):
                 continue
             clean = _strip_punct(s["text"])
@@ -171,8 +187,8 @@ class Video:
             )
         return cls(
             video_id=video_id,
-            title=title or match.track_name,
-            artist=artist or match.artist_name,
+            title=title,
+            artist=artist,
             snippets=snippets,
             language="ja",
             source="lrclib",
@@ -180,18 +196,32 @@ class Video:
 
     @classmethod
     def _from_lrclib(
-        cls, video_id: str, track_name: str, artist: Optional[str]
+        cls,
+        video_id: str,
+        track_name: str,
+        artist: Optional[str],
+        album: Optional[str] = None,
     ) -> "Video":
 
         logger.debug(
-            f"[{video_id}] LRCLIB で歌詞を検索はじめます。\n    track_name ={track_name!r}\n    artist_name={artist!r}"
+            f"[{video_id}] LRCLIB で歌詞を検索はじめます。\n    track_name ={track_name!r}\n    artist_name={artist!r}\n    album_name={album!r}"
         )
         api = LrcLibAPI(user_agent="youtype/0.1.0")
-        results = api.search_lyrics(
-            track_name=track_name,
-            artist_name=artist,
-        )
-        logger.debug(f"[{video_id}] LRCLIB の検索結果: {len(results)} 件")
+
+        # 1) アーティスト名で検索
+        results = api.search_lyrics(track_name=track_name, artist_name=artist)
+        logger.debug(f"[{video_id}] LRCLIB artist検索: {len(results)} 件")
+
+        # 2) アルバム名で検索
+        if not results and album:
+            results = api.search_lyrics(track_name=track_name, album_name=album)
+            logger.debug(f"[{video_id}] LRCLIB album検索: {len(results)} 件")
+
+        # 3) 曲名のみで検索
+        if not results:
+            results = api.search_lyrics(track_name=track_name)
+            logger.debug(f"[{video_id}] LRCLIB 曲名のみ検索: {len(results)} 件")
+
         if not results:
             logger.warning(
                 f"[{video_id}] LRCLIB での検索結果が空でした。\n    track_name ={track_name!r}\n    artist_name={artist!r}"
@@ -256,7 +286,7 @@ class Video:
         logger.debug(f"[{video_id}] YouTube 自動生成CC字幕を取得します")
         if not track_name:
             try:
-                track_name, artist = _fetch_youtube_music_info(video_id)
+                track_name, artist, _ = _fetch_youtube_music_info(video_id)
             except Exception:
                 track_name = ""
         ytt_api = YouTubeTranscriptApi()
@@ -318,7 +348,9 @@ _LRC_TIME = re.compile(r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]")
 _JAPANESE = re.compile(r"[ぁ-ゟ゠-ヿ一-鿿㐀-䶿]")
 
 
-def _fetch_youtube_music_info(video_id: str) -> tuple[str, Optional[str]]:
+def _fetch_youtube_music_info(
+    video_id: str,
+) -> tuple[str, Optional[str], Optional[str]]:
     logger.debug(f"[{video_id}] yt_dlpで曲名とアーティスト名を取得します")
     import yt_dlp
 
@@ -329,8 +361,11 @@ def _fetch_youtube_music_info(video_id: str) -> tuple[str, Optional[str]]:
         )
     track: str = info.get("track") or info.get("title") or ""
     artist: Optional[str] = info.get("artist") or info.get("uploader")
-    logger.debug(f"[{video_id}] 取得した曲名: {track!r}\n  アーティスト名: {artist!r}")
-    return track, artist
+    album: Optional[str] = info.get("album")
+    logger.debug(
+        f"[{video_id}] 取得した曲名: {track!r}\n  アーティスト名: {artist!r}\n  アルバム名: {album!r}"
+    )
+    return track, artist, album
 
 
 def _parse_lrc(synced: str, song_length: Optional[float] = None) -> list[dict]:
