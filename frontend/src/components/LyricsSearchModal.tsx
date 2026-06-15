@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { LrclibResult } from "../types";
 
 interface Props {
@@ -31,6 +32,8 @@ export default function LyricsSearchModal({
   onApply,
   onClose,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <div
       className="modal-overlay"
@@ -41,27 +44,40 @@ export default function LyricsSearchModal({
       <div className="modal">
         <h2 className="modal-title">歌詞を検索</h2>
         <div className="modal-fields">
-          <input
-            className="modal-input"
-            placeholder="曲名"
-            value={searchTrack}
-            onChange={(e) => onSearchTrackChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSearch()}
-          />
-          <input
-            className="modal-input"
-            placeholder="アーティスト（省略可）"
-            value={searchArtist}
-            onChange={(e) => onSearchArtistChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSearch()}
-          />
-          <button
-            className="modal-search-btn"
-            onClick={onSearch}
-            disabled={searching}
-          >
-            {searching ? "検索中..." : "検索"}
-          </button>
+          <div className="search-main-row">
+            <button
+              className={`search-expand-btn${expanded ? " open" : ""}`}
+              onClick={() => setExpanded((v) => !v)}
+              aria-label="詳細検索"
+            >
+              ›
+            </button>
+            <input
+              className="modal-input"
+              placeholder="曲名"
+              value={searchTrack}
+              onChange={(e) => onSearchTrackChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onSearch()}
+            />
+            <button
+              className="modal-search-btn"
+              onClick={onSearch}
+              disabled={searching}
+            >
+              {searching ? "検索中..." : "検索"}
+            </button>
+          </div>
+          {expanded && (
+            <div className="search-detail-fields">
+              <input
+                className="modal-input"
+                placeholder="アーティスト"
+                value={searchArtist}
+                onChange={(e) => onSearchArtistChange(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && onSearch()}
+              />
+            </div>
+          )}
         </div>
         {searchResults.length > 0 && (
           <ul className="modal-results">
@@ -79,6 +95,11 @@ export default function LyricsSearchModal({
                     {r.album ? ` — ${r.album}` : ""}
                     {r.duration != null && ` (${formatDuration(r.duration)})`}
                   </span>
+                  {r.preview.length > 0 && (
+                    <span className="result-preview">
+                      {r.preview.join(" / ")}
+                    </span>
+                  )}
                   {applyingId === r.id && (
                     <span className="result-applying">適用中...</span>
                   )}

@@ -432,8 +432,42 @@
 
 .modal-fields {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+.search-main-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-expand-btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform 0.15s, background 0.15s;
+}
+.search-expand-btn:hover {
+  background: var(--code-bg);
+}
+.search-expand-btn.open {
+  transform: rotate(90deg);
+}
+
+.search-detail-fields {
+  display: flex;
+  gap: 8px;
+  padding-left: 32px;
 }
 
 .modal-input {
@@ -530,6 +564,16 @@
   background: var(--accent-bg);
   color: var(--accent);
   border: 1px solid var(--accent-border);
+}
+.result-preview {
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.5;
+  grid-column: 1 / 3;
+  grid-row: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .result-applying {
   font-size: 12px;
