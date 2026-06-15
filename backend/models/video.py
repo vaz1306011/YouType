@@ -59,8 +59,20 @@ def _furigana_tokens(text: str) -> list[dict]:
     return result
 
 
+_ALPHA = re.compile(r"[a-zA-Z]")
+
+
+def _join_readings(tokens: list[dict]) -> str:
+    parts: list[str] = []
+    for i, t in enumerate(tokens):
+        if i > 0 and _ALPHA.match(t["reading"]) and _ALPHA.match(tokens[i - 1]["reading"][-1:]):
+            parts.append(" ")
+        parts.append(t["reading"])
+    return "".join(parts)
+
+
 def _furigana(text: str) -> str:
-    return "".join(t["reading"] for t in _furigana_tokens(text))
+    return _join_readings(_furigana_tokens(text))
 
 
 def search_lrclib(track: str, artist: str) -> list[dict]:
@@ -153,7 +165,7 @@ class Video:
                 {
                     **s,
                     "text": clean,
-                    "furigana": "".join(t["reading"] for t in tokens),
+                    "furigana": _join_readings(tokens),
                     "tokens": tokens,
                 }
             )
@@ -207,7 +219,7 @@ class Video:
                 {
                     **s,
                     "text": clean,
-                    "furigana": "".join(t["reading"] for t in tokens),
+                    "furigana": _join_readings(tokens),
                     "tokens": tokens,
                 }
             )
@@ -277,7 +289,7 @@ class Video:
                 {
                     **s,
                     "text": clean,
-                    "furigana": "".join(t["reading"] for t in tokens),
+                    "furigana": _join_readings(tokens),
                     "tokens": tokens,
                 }
             )

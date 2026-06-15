@@ -140,6 +140,10 @@ function tokenize(hiragana: string): string[] {
   const tokens: string[] = [];
   let i = 0;
   while (i < hiragana.length) {
+    if (hiragana[i] === " ") {
+      i++;
+      continue;
+    }
     // 小文字がある場合は2文字複合
     const two = hiragana.slice(i, i + 2);
     if (i + 1 < hiragana.length && TABLE[two]) {
@@ -250,8 +254,20 @@ function advanceToken(state: MatchState): MatchState {
 }
 
 // 完了済みトークン数から表示用の「打ち終わった文字数（ひらがな）」を計算
-export function doneHiraganaLength(state: MatchState): number {
-  return state.tokens.slice(0, state.doneChars).join("").length;
+// furiganaにスペースが含まれる場合、スペース分のオフセットを加算する
+export function doneHiraganaLength(
+  state: MatchState,
+  furigana: string,
+): number {
+  const doneLen = state.tokens.slice(0, state.doneChars).join("").length;
+  let chars = 0;
+  let display = 0;
+  for (const ch of furigana) {
+    if (chars >= doneLen) break;
+    display++;
+    if (ch !== " ") chars++;
+  }
+  return display;
 }
 
 // ふりがなの打ち済み文字数から元テキストの打ち済み文字数を計算
